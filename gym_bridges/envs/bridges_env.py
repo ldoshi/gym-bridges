@@ -34,6 +34,10 @@ class BridgesEnv(gym.Env):
     self.state[index][action:action+brick_width] = 1
 
   def _is_bridge_complete(self):
+    # Quick check.
+    if not self.state.any(axis=0).all():
+      return False
+    
     # Run BFS from start to end.
     queue = []
     expanded = set()
