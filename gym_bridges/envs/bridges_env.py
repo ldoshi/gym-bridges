@@ -28,7 +28,6 @@ class BridgesEnv(gym.Env):
   def _check_row(self, action, index, brick_width):
     section = self.state[index][action:action+brick_width]
     return len(section) == brick_width and not section.any()
-#  and self.state[index+1][action:action+brick_width].any()
 
   def _place_brick(self, action, index, brick_width):
     self.state[index][action:action+brick_width] = 1
@@ -94,14 +93,17 @@ class BridgesEnv(gym.Env):
       reward = 100
       done = True
         
-    return self.state,reward,done,{}
+    return self.state.copy(),reward,done,{}
       
-  def reset(self):
-    self.state = np.zeros(shape=self.shape)
-    self.state[self.start[0]][self.start[1]] = 1
-    self.state[self.end[0]][self.end[1]] = 1
+  def reset(self, state=None):
+    if state is None:
+      self.state = np.zeros(shape=self.shape)
+      self.state[self.start[0]][self.start[1]] = 1
+      self.state[self.end[0]][self.end[1]] = 1
+    else:
+      self.state = state.copy()
 
-    return self.state
+    return self.state.copy()
       
   def render(self, mode='human'):
     print((("%s"*self.shape[1]+"\n")*self.shape[0]) % tuple(["X" if x else " " for x in self.state.flatten()]))
