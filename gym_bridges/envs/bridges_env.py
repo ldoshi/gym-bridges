@@ -5,14 +5,18 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 
 import numpy as np
+from random import choice
 
 class BridgesEnv(gym.Env):
   metadata = {'render.modes': ['human']}
 
   def __init__(self):
     pass
-  
-  def setup(self, height, width):
+
+  # vary_heights will uniformly vary the starting heights on the left
+  # and right side of the gap. In the current implementation, a bridge
+  # will always be possible.
+  def setup(self, height, width, vary_heights=False):
     self.shape = (height, width)
 
     self.nA = width
@@ -20,11 +24,29 @@ class BridgesEnv(gym.Env):
 
     self.start = (self.shape[0]-1, 0)
     self.end = (self.shape[0]-1, self.shape[1]-1)
-        
+
+    self.height_pairs = []
+
+    start_height_max = 1
+    if vary_heights:
+      start_height_max = height
+      
+    for start_height in range(start_height_max):
+      for end_height in range(start_height + 1):
+        if self._check_feasible(start_height, end_height):
+          self.height_pairs.append((start_height, end_height))
+          if start_height != end_height:
+            self.height_pairs.append((end_height, start_height))
+          
     self.reset()
  
     self.brick = 2
 
+  # Verify if the maximum possible span before hitting the height
+  # limit is sufficient to bridge the gap.
+  def _check_feasible(self, start_height, end_height):
+    return (start_height - end_height) + 2 * (self.shape[0] - 1 - start_height) >= self.shape[1]-2
+    
   def _check_row(self, action, index, brick_width):
     section = self.state[index][action:action+brick_width]
     return len(section) == brick_width and not section.any()
@@ -98,8 +120,12 @@ class BridgesEnv(gym.Env):
   def reset(self, state=None):
     if state is None:
       self.state = np.zeros(shape=self.shape)
-      self.state[self.start[0]][self.start[1]] = 1
-      self.state[self.end[0]][self.end[1]] = 1
+
+      height_pair = choice(self.height_pairs)
+      for start_adjustment in range(height_pair[0] + 1):
+        self.state[self.start[0] - start_adjustment][self.start[1]] = 1
+      for end_adjustment in range(height_pair[1] + 1):
+        self.state[self.end[0] - end_adjustment][self.end[1]] = 1
     else:
       self.state = state.copy()
 
@@ -112,7 +138,7 @@ class BridgesEnv(gym.Env):
     pass
 
 #env = BridgesEnv()
-#env.setup(6,10)
+#env.setup(3,5, vary_heights=True)
 #env.reset()
 
 #for _ in range(100):
