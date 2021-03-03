@@ -117,11 +117,12 @@ class BridgesEnv(gym.Env):
         
     return self.state.copy(),reward,done,{}
       
-  def reset(self, state=None):
+  def reset(self, state=None, height_pair=None):
     if state is None:
       self.state = np.zeros(shape=self.shape)
 
-      height_pair = choice(self.height_pairs)
+      if height_pair is None:
+        height_pair = choice(self.height_pairs)
       for start_adjustment in range(height_pair[0] + 1):
         self.state[self.start[0] - start_adjustment][self.start[1]] = 1
       for end_adjustment in range(height_pair[1] + 1):
@@ -137,9 +138,9 @@ class BridgesEnv(gym.Env):
   def close(self):
     pass
 
-#env = BridgesEnv()
-#env.setup(3,5, vary_heights=True)
-#env.reset()
+env = BridgesEnv()
+env.setup(3,5, vary_heights=True)
+env.reset()
 
 #for _ in range(100):
 #    observation, reward, done, _ = env.step(env.action_space.sample())
