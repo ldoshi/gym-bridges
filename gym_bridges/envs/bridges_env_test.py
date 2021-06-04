@@ -132,11 +132,12 @@ class TestBridgesEnv(unittest.TestCase):
     def test_is_bridge_complete_side_completion(self, mirror):
         """Verifies bridge completion detection when the bridge is completed via a side connection to an endpoint instead being placed on top of one of the endpoints."""
 
-        width = 3
+        heights = [2,0,1]
+        width = len(heights)
         self.env.setup(width=width)
 
         # Side completion to starting point.
-        _reset_helper([2,0,1], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(1, self.env, width, mirror)
         self.assertTrue(self.env._is_bridge_complete())
@@ -150,18 +151,19 @@ class TestBridgesEnv(unittest.TestCase):
     def test_is_bridge_complete_wide_endpoint(self, mirror):
         """Verifies bridge completion detection when the bridge completes by touching any section of a wide endpoint."""
 
-        width = 5
+        heights = [1,1,1,0,1]
+        width = len(heights)
         self.env.setup(width=width)
 
         # Test two completions with a wide starting point.
-        _reset_helper([1,1,1,0,1], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(3, self.env, width, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(1, self.env, width, mirror)
         self.assertTrue(self.env._is_bridge_complete())
 
-        _reset_helper([1,1,1,0,1], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(3, self.env, width, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -171,7 +173,6 @@ class TestBridgesEnv(unittest.TestCase):
         _step_helper(0, self.env, width, mirror)
         self.assertTrue(self.env._is_bridge_complete())
 
-#        TODO(lyric) add render to each test case!
     @parameterized.expand(
         [
             (False,),
@@ -181,10 +182,11 @@ class TestBridgesEnv(unittest.TestCase):
     def test_is_bridge_complete_cliff_side_insufficient(self, mirror):
         """Verifies bridge completion detection when the bridge touches the side of a cliff on one end, but not the top."""
 
-        width = 3
+        heights = [1,0,3]
+        width = len(heights)
         self.env.setup(width=width)
 
-        _reset_helper([1,0,3], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -200,15 +202,15 @@ class TestBridgesEnv(unittest.TestCase):
     def test_is_bridge_complete_center_ground_surface(self, mirror):
         """Verifies bridge completion detection when the bridge touches a central ground component that's not part of the left or the right. Crossing over central ground is permitted as part of connecting the left and right. This test verifies the case where bridges adjoin the center ground at surface height."""
 
-        width = 6
+        heights = [1,0,2,2,0,1]
+        width = len(heights)
         self.env.setup(width=width)
 
-        _reset_helper([1,0,2,2,0,1], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(4, self.env, width, mirror)
-        self.env.render()
         self.assertTrue(self.env._is_bridge_complete())
 
     @parameterized.expand(
@@ -220,17 +222,17 @@ class TestBridgesEnv(unittest.TestCase):
     def test_is_bridge_complete_center_ground_build_up(self, mirror):
         """Verifies bridge completion detection when the bridge touches a central ground component that's not part of the left or the right. Crossing over central ground is permitted as part of connecting the left and right. This test verifies the case where bridges connect to the center ground by building up from it."""
 
-        width = 9
+        heights = [1,0,0,1,1,1,0,0,1]
+        width = len(heights)
         self.env.setup(width=width)
 
-        _reset_helper([1,0,0,1,1,1,0,0,1], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
         _step_helper(7, self.env, width, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(2, self.env, width, mirror)
         _step_helper(5, self.env, width, mirror)
-        self.env.render()
         self.assertTrue(self.env._is_bridge_complete())
         
     @parameterized.expand(
@@ -242,16 +244,16 @@ class TestBridgesEnv(unittest.TestCase):
     def test_is_bridge_complete_center_ground_surface_and_build_up(self, mirror):
         """Verifies bridge completion detection when the bridge touches a central ground component that's not part of the left or the right. Crossing over central ground is permitted as part of connecting the left and right. This test verifies the case where one bridge connects to the center ground by building up from it and the other adjoins the center ground at surface height."""
 
-        width = 8
+        heights = [1,0,2,2,2,0,0,2]
+        width = len(heights)
         self.env.setup(width=width)
 
-        _reset_helper([1,0,2,2,2,0,0,2], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
         _step_helper(6, self.env, width, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(4, self.env, width, mirror)
-        self.env.render()
         self.assertTrue(self.env._is_bridge_complete())
 
     @parameterized.expand(
@@ -263,14 +265,36 @@ class TestBridgesEnv(unittest.TestCase):
     def test_is_bridge_complete_skip_center_ground(self, mirror):
         """Verifies bridge completion detection when the bridge avoids touching a central ground component that's not part of the left or the right. Touching central ground is not required."""
 
-        width = 6
+        heights = [1,0,1,1,0,1]
+        width = len(heights)
         self.env.setup(width=width)
 
-        _reset_helper([1,0,1,1,0,1], self.env, mirror)
+        _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
         _step_helper(1, self.env, width, mirror)
         _step_helper(4, self.env, width, mirror)
+        self.assertFalse(self.env._is_bridge_complete())
+        _step_helper(3, self.env, width, mirror)
+        self.assertTrue(self.env._is_bridge_complete())
+
+    @parameterized.expand(
+        [
+            (False,),
+            (True,)
+        ]
+    )        
+    def test_is_bridge_complete_multiple_center_segments(self, mirror):
+        """Verifies bridge completion detection when the bridge touches multiple central land segments."""
+
+        heights = [1,0,2,2,0,3,3,3,0,4]
+        width = len(heights)
+        self.env.setup(width=width)
+
+        _reset_helper(heights, self.env, mirror)
+        self.assertFalse(self.env._is_bridge_complete())
+        _step_helper(0, self.env, width, mirror)
+        _step_helper(7, self.env, width, mirror)
         self.assertFalse(self.env._is_bridge_complete())
         _step_helper(3, self.env, width, mirror)
         self.assertTrue(self.env._is_bridge_complete())
