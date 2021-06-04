@@ -232,13 +232,3 @@ class BridgesEnv(gym.Env):
   def close(self):
     pass
 
-#env = BridgesEnv()
-#env.setup(9, 2)
-
-#for _ in range(40):
-#    observation, reward, done, _ = env.step(env.action_space.sample())
-#    env.render()
-#    if done:
-#      print ("DONE")
-#      break
-#env.close()

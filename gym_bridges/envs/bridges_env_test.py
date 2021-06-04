@@ -131,6 +131,10 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_side_completion(self, mirror):
         """Verifies bridge completion detection when the bridge is completed via a side connection to an endpoint instead being placed on top of one of the endpoints."""
+        # Test case:
+        #
+        # @@[][]
+        # @@  @@
 
         heights = [2,0,1]
         width = len(heights)
@@ -150,6 +154,14 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_wide_endpoint(self, mirror):
         """Verifies bridge completion detection when the bridge completes by touching any section of a wide endpoint."""
+        # Test cases:
+        #
+        #   [][][][]
+        # @@@@@@  @@
+        #
+        # [][][][]  
+        # [][]  [][]
+        # @@@@@@  @@
 
         heights = [1,1,1,0,1]
         width = len(heights)
@@ -181,7 +193,12 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_cliff_side_insufficient(self, mirror):
         """Verifies bridge completion detection when the bridge touches the side of a cliff on one end, but not the top."""
-
+        # Test case:
+        #
+        # [][]@@
+        # [][]@@
+        # @@  @@
+        
         heights = [1,0,3]
         width = len(heights)
         self.env.setup(width=width)
@@ -201,7 +218,11 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_center_ground_surface(self, mirror):
         """Verifies bridge completion detection when the bridge touches a central ground component that's not part of the left or the right. Crossing over central ground is permitted as part of connecting the left and right. This test verifies the case where bridges adjoin the center ground at surface height."""
-
+        # Test case:
+        #
+        # [][]@@@@[][]
+        # @@  @@@@  @@
+        
         heights = [1,0,2,2,0,1]
         width = len(heights)
         self.env.setup(width=width)
@@ -221,7 +242,11 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_center_ground_build_up(self, mirror):
         """Verifies bridge completion detection when the bridge touches a central ground component that's not part of the left or the right. Crossing over central ground is permitted as part of connecting the left and right. This test verifies the case where bridges connect to the center ground by building up from it."""
-
+        # Test case:
+        #
+        # [][][][]  [][][][]
+        # @@    @@@@@@    @@
+        
         heights = [1,0,0,1,1,1,0,0,1]
         width = len(heights)
         self.env.setup(width=width)
@@ -243,7 +268,12 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_center_ground_surface_and_build_up(self, mirror):
         """Verifies bridge completion detection when the bridge touches a central ground component that's not part of the left or the right. Crossing over central ground is permitted as part of connecting the left and right. This test verifies the case where one bridge connects to the center ground by building up from it and the other adjoins the center ground at surface height."""
-
+        # Test case:
+        #
+        #         [][][][]
+        # [][]@@@@@@    @@
+        # @@  @@@@@@    @@
+        
         heights = [1,0,2,2,2,0,0,2]
         width = len(heights)
         self.env.setup(width=width)
@@ -264,7 +294,12 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_skip_center_ground(self, mirror):
         """Verifies bridge completion detection when the bridge avoids touching a central ground component that's not part of the left or the right. Touching central ground is not required."""
-
+        # Test case:
+        #
+        #   [][][][]  
+        # [][]    [][]
+        # @@  @@@@  @@
+        
         heights = [1,0,1,1,0,1]
         width = len(heights)
         self.env.setup(width=width)
@@ -286,7 +321,13 @@ class TestBridgesEnv(unittest.TestCase):
     )        
     def test_is_bridge_complete_multiple_center_segments(self, mirror):
         """Verifies bridge completion detection when the bridge touches multiple central land segments."""
-
+        # Test case:
+        #
+        #               [][]@@
+        #       [][]@@@@@@  @@
+        # [][]@@@@  @@@@@@  @@
+        # @@  @@@@  @@@@@@  @@
+        
         heights = [1,0,2,2,0,3,3,3,0,4]
         width = len(heights)
         self.env.setup(width=width)
