@@ -44,18 +44,13 @@ class BridgesEnv(gym.Env):
         self.max_gap_count = max_gap_count
         self.force_standard_config = force_standard_config
 
-        self.start = (self.shape[0] - 1, 0)
-        self.end = (self.shape[0] - 1, self.shape[1] - 1)
-
-        assert self.start[0] == self.end[0]
-
         # These 4 block-related members are set during reset().
         self._initial_blocks = None
         # Set of positions at the surface of the starting block.
         self._starting_block_surface = None
         # Set of positions at the surface of the ending block.
         self._ending_block_surface = set()
-        # List of sets of positions at the surface of each central blo
+        # List of sets of positions at the surface of each central block.
         self._central_block_surfaces = {}
 
         self.reset()
@@ -194,7 +189,7 @@ class BridgesEnv(gym.Env):
 
             self._initial_blocks = []
 
-            index = self.start[1]
+            index = 0
             for i in range(gap_count + 1):
                 if gap_count:
                     # We must ensure we leave enough room for the remaining gaps
@@ -222,8 +217,8 @@ class BridgesEnv(gym.Env):
 
             if self.force_standard_config:
                 self._initial_blocks = [
-                    InitialBlock(index=self.start[1], width=1, height=1),
-                    InitialBlock(index=self.end[1], width=1, height=1),
+                    InitialBlock(index=0, width=1, height=1),
+                    InitialBlock(index=self.shape[1] - 1, width=1, height=1),
                 ]
 
             for initial_block in self._initial_blocks:
@@ -236,6 +231,7 @@ class BridgesEnv(gym.Env):
                         ] = StateType.GROUND
 
         base_height = self.shape[0]
+        
         self._starting_block_surface = [
             (
                 base_height - self._initial_blocks[0].height,
