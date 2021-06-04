@@ -70,6 +70,21 @@ class BridgesEnv(gym.Env):
             return False
 
         # Run BFS from start to end.
+
+        # 1. All nodes at the starting block surface are added to the
+        # queue as potential starting points for the path. This
+        # represents being able to traverse any amount of the starting
+        # block surface.
+        
+        # 2. Any node located in the ending block surface represents
+        # reaching the goal. This represents being able to traverse
+        # any amount of the ending block surface.
+        #
+        # 3. The first time any node in a central block surface is
+        # encounted, all nodes from that particular central block
+        # surface are added to the queue. This represents being able
+        # to traverse any amount of that central blocks surface before
+        # continuing to the next bridge component.
         queue = []
         expanded = set()
 
@@ -231,7 +246,7 @@ class BridgesEnv(gym.Env):
                         ] = StateType.GROUND
 
         base_height = self.shape[0]
-        
+
         self._starting_block_surface = [
             (
                 base_height - self._initial_blocks[0].height,
