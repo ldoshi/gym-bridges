@@ -27,13 +27,12 @@ class StateType(IntEnum):
 class BridgesEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self):
-        pass
-
     # The max height of the ground of either end will be [1, width).
     # The max height of the env will be 1.5 times the width.
     # In the current implementation, a bridge will always be possible.
-    def setup(self, width, max_gap_count=1, force_standard_config=False):
+    def __init__(self, width, max_gap_count=1, force_standard_config=False):
+        super().__init__()
+      
         assert (
             width > max_gap_count * 2
         ), "The max gap count must be less than half the width"
@@ -56,6 +55,8 @@ class BridgesEnv(gym.Env):
         self.reset()
 
         self.brick = 2
+
+        
 
     def _check_row(self, action, index, brick_width):
         section = self.state[index][action : action + brick_width]

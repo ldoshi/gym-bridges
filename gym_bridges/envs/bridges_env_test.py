@@ -6,30 +6,32 @@ from collections import defaultdict
 from parameterized import parameterized
 
 from bridges_env import BridgesEnv
+from bridges_env import StateType
 
 
-def _check_block(state, index, width_check_value):
+def _check_block(state, index, state_type):
     """Verifies that the block start at index is grounded in the environment and
     maintains a level height until the next gap. Returns the index following this
     block on success. Gaps are checked as blocks of height 0."""
     env_height = state.shape[0] - 1
     block_height = 0
 
-    while state[env_height - block_height][index] == 1:
+    while (
+        block_height < state.shape[0]
+        and state[env_height - block_height, index] == state_type
+    ):
         block_height += 1
 
     i = index + 1
-    while i < state.shape[1] and state[env_height][i] == width_check_value:
-        i_height = 0
-        while state[env_height - i_height][i] == 1:
-            i_height += 1
-
-        if i_height != block_height:
-            return False
-
+    while i < state.shape[1] and state[env_height, i] == state_type:
         i += 1
 
-    if state[:, index:i].sum() != block_height * (i - index):
+    # Verify the block is all of state_type.
+    if not np.where(state[-block_height:, index:i] == state_type, True, False).all():
+        return False
+
+    # Verify everything above the block is *not* of state_type.
+    if np.where(state[:-block_height, index:i] == state_type, True, False).any():
         return False
 
     return i
@@ -39,12 +41,17 @@ def _state_builder(shape, heights):
     state = np.zeros(shape)
     state_height = state.shape[0]
     for i, height in enumerate(heights):
-        state[state_height - height : state_height, i] = 1
+        state[state_height - height :, i] = StateType.GROUND
+
     return state
 
 
 def _step_helper(action, env, width, mirror=False):
     if mirror:
+        # The -2 comes from the following:
+        # * -1 to account for 0-indexing
+        # * -1 to account for the brick width of 2. The action space
+        #   is actually (width - (brick_width - 1)) in size.
         action = width - 2 - action
 
     env.step(action)
@@ -58,47 +65,49 @@ def _reset_helper(heights, env, mirror=False):
 
 
 class TestBridgesEnv(unittest.TestCase):
-    def setUp(self):
-        self.env = BridgesEnv()
-
     @parameterized.expand([(3,), (9,)])
     def test_force_standard_config(self, width):
-        """The standard configuration only has a value of 1 at the bottom left
+        """The standard configuration only has ground at the bottom left
         and right locations of the env."""
-        self.env.setup(width=width, force_standard_config=True)
+        self.env = BridgesEnv(width=width, force_standard_config=True)
         height = self.env.shape[0] - 1
-        self.assertEqual(self.env.state[height][0], 1)
-        self.assertEqual(self.env.state[height][width - 1], 1)
-        self.assertEqual(self.env.state.sum(), 2)
+        self.assertEqual(self.env.state[height, 0], StateType.GROUND)
+        self.assertEqual(self.env.state[height, width - 1], StateType.GROUND)
+        self.assertEqual(len(np.where(self.env.state == StateType.GROUND)[0]), 2)
 
     @parameterized.expand([(3,), (9,)])
     def test_gap_count(self, width):
         """Verifies the requested number of gaps exist. This test also verifies
         that the env is well-formed in terms of having initial blocks of ground
-        (1 values) properly grounded to the bottom of the env and level between
-        gaps."""
-        self.env.setup(width=width)
+        properly grounded to the bottom of the env and level between gaps. The
+        check also ensures that gap sections are completely empty."""
+        self.env = BridgesEnv(width=width)
         for gap_count in range(1, ((width + 1) // 2)):
             self.env.reset(gap_count=gap_count)
-            # Verify gap columns are completely empty.
+
             index = 0
-            width_check_value = 1
-            counter = 0
+            state_type = StateType.GROUND
+            gap_counter = 0
             while index < width:
-                index = _check_block(self.env.state, index, width_check_value)
-                self.assertTrue(index)
+                index = _check_block(self.env.state, index, state_type)
+                self.assertTrue(isinstance(index, int))
+                self.assertGreater(index, 0)
 
-                width_check_value = (width_check_value + 1) % 2
-                # Misses the first value so this should equal the gap count.
-                counter += width_check_value
+                if state_type == StateType.GROUND:
+                    state_type = StateType.EMPTY
+                else:
+                    state_type = StateType.GROUND
+                    # Increment the gap everytime we reach the end of
+                    # a gap.
+                    gap_counter += 1
 
-            self.assertEqual(counter, gap_count)
+            self.assertEqual(gap_counter, gap_count)
 
     @parameterized.expand([(3,), (9,)])
     def test_max_gap_count(self, width):
         """Verifies the gap count varies between 1 and the max gap count."""
         for gap_count in range(1, ((width + 1) // 2)):
-            self.env.setup(width=width, max_gap_count=gap_count)
+            self.env = BridgesEnv(width=width, max_gap_count=gap_count)
             height = self.env.shape[0] - 1
             counts = defaultdict(lambda: 0)
             for _ in range(100):
@@ -107,9 +116,12 @@ class TestBridgesEnv(unittest.TestCase):
                     int(
                         np.sum(
                             [
-                                self.env.state[height][i]
-                                if self.env.state[height][i]
-                                - self.env.state[height][i + 1]
+                                1
+                                if (
+                                    self.env.state[height, i] == StateType.EMPTY
+                                    and self.env.state[height, i + 1]
+                                    == StateType.GROUND
+                                )
                                 else 0
                                 for i in range(self.env.state.shape[1] - 1)
                             ]
@@ -130,7 +142,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 0, 0, 1]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -153,7 +165,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [2, 0, 1]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         # Side completion to starting point.
         _reset_helper(heights, self.env, mirror)
@@ -176,7 +188,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 1, 1, 0, 1]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         # Test two completions with a wide starting point.
         _reset_helper(heights, self.env, mirror)
@@ -208,7 +220,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 0, 3]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -231,7 +243,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 0, 2, 2, 0, 1]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -254,7 +266,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 0, 0, 1, 1, 1, 0, 0, 1]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -281,7 +293,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 0, 2, 2, 2, 0, 0, 2]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -304,7 +316,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 0, 1, 1, 0, 1]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
@@ -328,7 +340,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         heights = [1, 0, 2, 2, 0, 3, 3, 3, 0, 4]
         width = len(heights)
-        self.env.setup(width=width)
+        self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
         self.assertFalse(self.env._is_bridge_complete())
