@@ -32,7 +32,7 @@ class BridgesEnv(gym.Env):
     # In the current implementation, a bridge will always be possible.
     def __init__(self, width, max_gap_count=1, force_standard_config=False):
         super().__init__()
-      
+
         assert (
             width > max_gap_count * 2
         ), "The max gap count must be less than half the width"
@@ -56,8 +56,6 @@ class BridgesEnv(gym.Env):
 
         self.brick = 2
 
-        
-
     def _check_row(self, action, index, brick_width):
         section = self.state[index, action : action + brick_width]
         return len(section) == brick_width and not section.any()
@@ -76,7 +74,7 @@ class BridgesEnv(gym.Env):
         # queue as potential starting points for the path. This
         # represents being able to traverse any amount of the starting
         # block surface.
-        
+
         # 2. Any node located in the ending block surface represents
         # reaching the goal. This represents being able to traverse
         # any amount of the ending block surface.
@@ -204,28 +202,33 @@ class BridgesEnv(gym.Env):
                     InitialBlock(index=self.shape[1] - 1, width=1, height=1),
                 ]
             else:
-              index = 0
+                index = 0
 
-              # We must ensure that all blocks and gaps have minimum
-              # width of 1. This is done by sampling twice as many
-              # starting indices for blocks without replacement and
-              # retaining every other index.
-              positions = random.sample(range(1, self.shape[1]), 2*gap_count)
-              # Ensure the first block starts at index 0 and the last
-              # block can compute its width.
-              positions = np.array( sorted([0] + positions + [self.shape[1]]))
-              width = np.diff(positions)[::2]
-              index = positions[::2]
-              # We constrain the height of any given block to the
-              # *width* of the environment. The environment's height
-              # is set at 1.5*environment width to ensure a bridge can
-              # always be built without hitting the top of the
-              # environment. The height must be at least 1.
-              height = random.choices(range(1, self.shape[1]), k=len(index))
-              self._initial_blocks = [InitialBlock(i, w, h) for i, w, h in zip(index, width, height)]
-              
+                # We must ensure that all blocks and gaps have minimum
+                # width of 1. This is done by sampling twice as many
+                # starting indices for blocks without replacement and
+                # retaining every other index.
+                positions = random.sample(range(1, self.shape[1]), 2 * gap_count)
+                # Ensure the first block starts at index 0 and the last
+                # block can compute its width.
+                positions = np.array(sorted([0] + positions + [self.shape[1]]))
+                width = np.diff(positions)[::2]
+                index = positions[::2]
+                # We constrain the height of any given block to the
+                # *width* of the environment. The environment's height
+                # is set at 1.5*environment width to ensure a bridge can
+                # always be built without hitting the top of the
+                # environment. The height must be at least 1.
+                height = random.choices(range(1, self.shape[1]), k=len(index))
+                self._initial_blocks = [
+                    InitialBlock(i, w, h) for i, w, h in zip(index, width, height)
+                ]
+
             for initial_block in self._initial_blocks:
-              self.state[-initial_block.height:, initial_block.index:initial_block.index + initial_block.width] = StateType.GROUND
+                self.state[
+                    -initial_block.height :,
+                    initial_block.index : initial_block.index + initial_block.width,
+                ] = StateType.GROUND
 
         self._central_block_surfaces = []
         for initial_block in self._initial_blocks:
