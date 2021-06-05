@@ -65,6 +65,23 @@ def _reset_helper(heights, env, mirror=False):
 
 
 class TestBridgesEnv(unittest.TestCase):
+    def test_step_simple(self):
+        """Verifies the rewards and done for step."""
+
+        heights = [1, 0, 0, 1]
+        width = len(heights)
+        self.env = BridgesEnv(width=width)
+        _reset_helper(heights, self.env)
+        _, reward, done, _ = self.env.step(1)
+        self.assertEqual(reward, -5)
+        self.assertFalse(done)
+        _, reward, done, _ = self.env.step(2)
+        self.assertEqual(reward, -1)
+        self.assertFalse(done)
+        _, reward, done, _ = self.env.step(0)
+        self.assertEqual(reward, 100)
+        self.assertTrue(done)
+
     @parameterized.expand([(3,), (9,)])
     def test_force_standard_config(self, width):
         """The standard configuration only has ground at the bottom left
