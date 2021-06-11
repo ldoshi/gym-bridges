@@ -5,148 +5,263 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 
 import numpy as np
-from random import choice
+import random
+from typing import NamedTuple
+from enum import IntEnum
+from collections import deque
+
+
+class InitialBlock(NamedTuple):
+    index: int
+    width: int
+    height: int
+
+
+class StateType(IntEnum):
+    _order_ = "EMPTY GROUND BRICK"
+    EMPTY = 0
+    GROUND = 1
+    BRICK = 2
+
 
 class BridgesEnv(gym.Env):
-  metadata = {'render.modes': ['human']}
+    metadata = {"render.modes": ["human"]}
 
-  def __init__(self):
-    pass
+    # The max height of the ground of either end will be [1, width).
+    # The max height of the env will be 1.5 times the width.
+    # In the current implementation, a bridge will always be possible.
+    def __init__(self, width, max_gap_count=1, force_standard_config=False):
+        super().__init__()
 
-  # vary_heights will uniformly vary the starting heights on the left
-  # and right side of the gap. In the current implementation, a bridge
-  # will always be possible.
-  def setup(self, height, width, vary_heights=False):
-    self.shape = (height, width)
+        assert (
+            width > max_gap_count * 2
+        ), "The max gap count must be less than half the width"
+        self.shape = (int(1.5 * width), width)
 
-    self.nA = width
-    self.action_space = spaces.Discrete(self.nA)
+        self.nA = width
+        self.action_space = spaces.Discrete(self.nA)
+        self.max_gap_count = max_gap_count
+        self.force_standard_config = force_standard_config
 
-    self.start = (self.shape[0]-1, 0)
-    self.end = (self.shape[0]-1, self.shape[1]-1)
+        # These 4 block-related members are set during reset().
+        self._initial_blocks = None
+        # List of positions at the surface of the starting block.
+        self._starting_block_surface = None
+        # Set of positions at the surface of the ending block.
+        self._ending_block_surface = set()
+        # List of sets of positions at the surface of each central block.
+        self._central_block_surfaces = {}
 
-    self.height_pairs = []
+        self.reset()
 
-    start_height_max = 1
-    if vary_heights:
-      start_height_max = height
-      
-    for start_height in range(start_height_max):
-      for end_height in range(start_height + 1):
-        if self._check_feasible(start_height, end_height):
-          self.height_pairs.append((start_height, end_height))
-          if start_height != end_height:
-            self.height_pairs.append((end_height, start_height))
-          
-    self.reset()
- 
-    self.brick = 2
+        self.brick = 2
 
-  # Verify if the maximum possible span before hitting the height
-  # limit is sufficient to bridge the gap.
-  def _check_feasible(self, start_height, end_height):
-    return (start_height - end_height) + 2 * (self.shape[0] - 1 - start_height) >= self.shape[1]-2
-    
-  def _check_row(self, action, index, brick_width):
-    section = self.state[index][action:action+brick_width]
-    return len(section) == brick_width and not section.any()
+    def _check_row(self, action, index, brick_width):
+        section = self.state[index, action : action + brick_width]
+        return len(section) == brick_width and not section.any()
 
-  def _place_brick(self, action, index, brick_width):
-    self.state[index][action:action+brick_width] = 1
+    def _place_brick(self, action, index, brick_width):
+        self.state[index, action : action + brick_width] = StateType.BRICK
 
-  def _is_bridge_complete(self):
-    # Quick check.
-    if not self.state.any(axis=0).all():
-      return False
-    
-    # Run BFS from start to end.
-    queue = []
-    expanded = set()
-    queue.append(self.start)
-    expanded.add(self.start)
+    def _is_bridge_complete(self):
+        # Quick check.
+        if not self.state.any(axis=0).all():
+            return False
 
-    while queue:
-      node = queue.pop(0)
-      if node == self.end:
-        return True
-      
-      if node[1] - 1 >= 0:
-        left = (node[0], node[1]-1)
-        if left not in expanded and self.state[left[0]][left[1]]:
-          queue.append(left)
-          expanded.add(left)          
+        # Run BFS from start to end.
 
-      if node[1] + 1 < self.shape[1]:
-        right = (node[0], node[1]+1)
-        if right not in expanded and self.state[right[0]][right[1]]:
-          queue.append(right)
-          expanded.add(right)
+        # 1. All nodes at the starting block surface are added to the
+        # queue as potential starting points for the path. This
+        # represents being able to traverse any amount of the starting
+        # block surface.
 
-      if node[0] - 1 >= 0:
-        up = (node[0] - 1, node[1])
-        if up not in expanded and self.state[up[0]][up[1]]:
-          queue.append(up)
-          expanded.add(up)
+        # 2. Any node located in the ending block surface represents
+        # reaching the goal. This represents being able to traverse
+        # any amount of the ending block surface.
+        #
+        # 3. The first time any node in a central block surface is
+        # encounted, all nodes from that particular central block
+        # surface are added to the queue. This represents being able
+        # to traverse any amount of that central blocks surface before
+        # continuing to the next bridge component.
+        queue = deque()
+        expanded = set()
 
-      if node[0] + 1 < self.shape[0]:
-        down = (node[0] + 1, node[1])
-        if down not in expanded and self.state[down[0]][down[1]]:
-          queue.append(down)
-          expanded.add(down)
-          
-    return False
-    
-  def step(self, action):
-    i = -1
-    while i < self.shape[0] - 1:
-      if not self._check_row(action, i + 1, self.brick):
-        break
-      i += 1
+        def _bfs_helper(next_node):
+            if next_node in expanded:
+                return False
 
-    placed_successfully = i > -1 and i < self.shape[0] - 1
-      
-    if placed_successfully:
-      self._place_brick(action, i, self.brick)
+            if next_node in self._ending_block_surface:
+                return True
 
-    reward = -1 if placed_successfully else -5
-    done = False
+            in_central_block_surface = False
+            for central_block_surface in self._central_block_surfaces:
+                if next_node in central_block_surface:
+                    in_central_block_surface = True
 
-    if self._is_bridge_complete():
-      reward = 100
-      done = True
-        
-    return self.state.copy(),reward,done,{}
-      
-  def reset(self, state=None, height_pair=None):
-    if state is None:
-      self.state = np.zeros(shape=self.shape)
+                    for central_block in central_block_surface:
+                        queue.append(central_block)
+                        expanded.add(central_block)
+                    # By construction central block surfaces are disconnected so
+                    # we can break after finding a match.
+                    break
 
-      if height_pair is None:
-        height_pair = choice(self.height_pairs)
-      for start_adjustment in range(height_pair[0] + 1):
-        self.state[self.start[0] - start_adjustment][self.start[1]] = 1
-      for end_adjustment in range(height_pair[1] + 1):
-        self.state[self.end[0] - end_adjustment][self.end[1]] = 1
-    else:
-      self.state = state.copy()
+            if self.state[next_node] == StateType.BRICK:
+                assert not in_central_block_surface
+                queue.append(next_node)
+                expanded.add(next_node)
 
-    return self.state.copy()
-      
-  def render(self, mode='human'):
-    print((("%s"*self.shape[1]+"\n")*self.shape[0]) % tuple(["X" if x else " " for x in self.state.flatten()]))
-      
-  def close(self):
-    pass
+            return False
 
-env = BridgesEnv()
-env.setup(3,5, vary_heights=True)
-env.reset()
+        for starting_block in self._starting_block_surface:
+            queue.append(starting_block)
+            expanded.add(starting_block)
 
-#for _ in range(100):
-#    observation, reward, done, _ = env.step(env.action_space.sample())
-#    env.render()
-#    if done:
-#      print ("DONE")
-#      break
+        while queue:
+            node = queue.popleft()
 
-#env.close()
+            if node[1] - 1 >= 0:
+                left = (node[0], node[1] - 1)
+                if _bfs_helper(left):
+                    return True
+
+            if node[1] + 1 < self.shape[1]:
+                right = (node[0], node[1] + 1)
+                if _bfs_helper(right):
+                    return True
+
+            if node[0] - 1 >= 0:
+                up = (node[0] - 1, node[1])
+                if _bfs_helper(up):
+                    return True
+
+            if node[0] + 1 < self.shape[0]:
+                down = (node[0] + 1, node[1])
+                if _bfs_helper(down):
+                    return True
+
+        return False
+
+    def step(self, action):
+        i = -1
+        while (i < self.shape[0] - 1) and self._check_row(action, i + 1, self.brick):
+            i += 1
+
+        placed_successfully = i > -1 and i < self.shape[0] - 1
+
+        if placed_successfully:
+            self._place_brick(action, i, self.brick)
+
+        done = self._is_bridge_complete()
+        reward = 100 if done else -1 if placed_successfully else -5
+
+        return self.state.copy(), reward, done, {}
+
+    def reset(self, state=None, gap_count=None):
+        if state is not None:
+            assert state.shape == self.shape
+
+            self.state = state.copy()
+
+            # Initialize initial_blocks based on the provided state.
+            self._initial_blocks = []
+
+            state_base_height, state_width = self.shape
+
+            index = 0
+            width = 0
+            # The loop goes one extra iteration to capture the ending block.
+            for x in range(state_width + 1):
+                if (
+                    x < state_width
+                    and state[state_base_height - 1, x] == StateType.GROUND
+                ):
+                    width += 1
+                else:
+                    # End of block. Compute height and save block.
+                    height = 0
+                    while (
+                        state[state_base_height - height - 1, x - 1] == StateType.GROUND
+                    ):
+                        height += 1
+                    self._initial_blocks.append(InitialBlock(index, width, height))
+                    index = x + 1
+                    width = 0
+
+        else:
+            self.state = np.zeros(shape=self.shape)
+
+            if not gap_count:
+                gap_count = random.randrange(1, self.max_gap_count + 1)
+
+            self._initial_blocks = []
+
+            if self.force_standard_config:
+                self._initial_blocks = [
+                    InitialBlock(index=0, width=1, height=1),
+                    InitialBlock(index=self.shape[1] - 1, width=1, height=1),
+                ]
+            else:
+                index = 0
+
+                # We must ensure that all blocks and gaps have minimum
+                # width of 1. This is done by sampling twice as many
+                # starting indices for blocks without replacement and
+                # retaining every other index.
+                positions = random.sample(range(1, self.shape[1]), 2 * gap_count)
+                # Ensure the first block starts at index 0 and the last
+                # block can compute its width.
+                positions = np.array(sorted([0] + positions + [self.shape[1]]))
+                width = np.diff(positions)[::2]
+                index = positions[::2]
+                # We constrain the height of any given block to the
+                # *width* of the environment. The environment's height
+                # is set at 1.5*environment width to ensure a bridge can
+                # always be built without hitting the top of the
+                # environment. The height must be at least 1.
+                height = random.choices(range(1, self.shape[1]), k=len(index))
+                self._initial_blocks = [
+                    InitialBlock(i, w, h) for i, w, h in zip(index, width, height)
+                ]
+
+            for initial_block in self._initial_blocks:
+                self.state[
+                    -initial_block.height :,
+                    initial_block.index : initial_block.index + initial_block.width,
+                ] = StateType.GROUND
+
+        self._central_block_surfaces = []
+        for initial_block in self._initial_blocks:
+            self._central_block_surfaces.append(
+                set(
+                    [
+                        (
+                            self.shape[0] - initial_block.height,
+                            initial_block.index + x,
+                        )
+                        for x in range(initial_block.width)
+                    ]
+                )
+            )
+
+        # It's slightly better for _starting_block_surface to be a
+        # list because its usage is only to be iterated through.
+        self._starting_block_surface = sorted(list(self._central_block_surfaces.pop(0)))
+        self._ending_block_surface = self._central_block_surfaces.pop()
+
+        return self.state.copy()
+
+    def render(self, mode="human"):
+        print(
+            (("%s" * self.shape[1] + "\n") * self.shape[0])
+            % tuple(
+                [
+                    "@@"
+                    if x == StateType.GROUND
+                    else "[]"
+                    if x == StateType.BRICK
+                    else "  "
+                    for x in self.state.flatten()
+                ]
+            )
+        )
