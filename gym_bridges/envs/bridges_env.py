@@ -45,7 +45,7 @@ class BridgesEnv(gym.Env):
 
         # These 4 block-related members are set during reset().
         self._initial_blocks = None
-        # Set of positions at the surface of the starting block.
+        # List of positions at the surface of the starting block.
         self._starting_block_surface = None
         # Set of positions at the surface of the ending block.
         self._ending_block_surface = set()
@@ -233,17 +233,21 @@ class BridgesEnv(gym.Env):
         self._central_block_surfaces = []
         for initial_block in self._initial_blocks:
             self._central_block_surfaces.append(
-                [
-                    (
-                        self.shape[0] - initial_block.height,
-                        initial_block.index + x,
-                    )
-                    for x in range(initial_block.width)
-                ]
+                set(
+                    [
+                        (
+                            self.shape[0] - initial_block.height,
+                            initial_block.index + x,
+                        )
+                        for x in range(initial_block.width)
+                    ]
+                )
             )
 
-        self._starting_block_surface = self._central_block_surfaces.pop(0)
-        self._ending_block_surface = set(self._central_block_surfaces.pop())
+        # It's slightly better for _starting_block_surface to be a
+        # list because its usage is only to be iterated through.
+        self._starting_block_surface = sorted(list(self._central_block_surfaces.pop(0)))
+        self._ending_block_surface = self._central_block_surfaces.pop()
 
         return self.state.copy()
 
