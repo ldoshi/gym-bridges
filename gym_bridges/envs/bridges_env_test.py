@@ -56,7 +56,7 @@ def _step_helper(action, env, width, mirror=False):
     Returns:
       True if the bridge is complete following this action.
 
-    """ 
+    """
     if mirror:
         # The -2 comes from the following:
         # * -1 to account for 0-indexing
@@ -148,8 +148,7 @@ class TestBridgesEnv(unittest.TestCase):
                                 1
                                 if (
                                     initial_state[height, i] == StateType.EMPTY
-                                    and initial_state[height, i + 1]
-                                    == StateType.GROUND
+                                    and initial_state[height, i + 1] == StateType.GROUND
                                 )
                                 else 0
                                 for i in range(self.env.shape[1] - 1)
