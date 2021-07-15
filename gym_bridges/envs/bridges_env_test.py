@@ -47,6 +47,16 @@ def _state_builder(shape, heights):
 
 
 def _step_helper(action, env, width, mirror=False):
+    """Takes the desired step and returns done status
+
+    Args:
+      mirror: Flips the action horizontally across a vertical axis
+      down the center of the environment, adjusted for brick width.
+
+    Returns:
+      True if the bridge is complete following this action.
+
+    """
     if mirror:
         # The -2 comes from the following:
         # * -1 to account for 0-indexing
@@ -54,7 +64,8 @@ def _step_helper(action, env, width, mirror=False):
         #   is actually (width - (brick_width - 1)) in size.
         action = width - 2 - action
 
-    env.step(action)
+    _, _, done, _ = env.step(action)
+    return done
 
 
 def _reset_helper(heights, env, mirror=False):
@@ -88,9 +99,10 @@ class TestBridgesEnv(unittest.TestCase):
         and right locations of the env."""
         self.env = BridgesEnv(width=width, force_standard_config=True)
         height = self.env.shape[0] - 1
-        self.assertEqual(self.env.state[height, 0], StateType.GROUND)
-        self.assertEqual(self.env.state[height, width - 1], StateType.GROUND)
-        self.assertEqual(len(np.where(self.env.state == StateType.GROUND)[0]), 2)
+        initial_state = self.env.reset()
+        self.assertEqual(initial_state[height, 0], StateType.GROUND)
+        self.assertEqual(initial_state[height, width - 1], StateType.GROUND)
+        self.assertEqual(len(np.where(initial_state == StateType.GROUND)[0]), 2)
 
     @parameterized.expand([(3,), (9,)])
     def test_gap_count(self, width):
@@ -100,13 +112,13 @@ class TestBridgesEnv(unittest.TestCase):
         check also ensures that gap sections are completely empty."""
         self.env = BridgesEnv(width=width)
         for gap_count in range(1, ((width + 1) // 2)):
-            self.env.reset(gap_count=gap_count)
+            initial_state = self.env.reset(gap_count=gap_count)
 
             index = 0
             state_type = StateType.GROUND
             gap_counter = 0
             while index < width:
-                index = _check_block(self.env.state, index, state_type)
+                index = _check_block(initial_state, index, state_type)
                 self.assertTrue(isinstance(index, int))
                 self.assertGreater(index, 0)
 
@@ -128,19 +140,18 @@ class TestBridgesEnv(unittest.TestCase):
             height = self.env.shape[0] - 1
             counts = defaultdict(lambda: 0)
             for _ in range(100):
-                self.env.reset()
+                initial_state = self.env.reset()
                 counts[
                     int(
                         np.sum(
                             [
                                 1
                                 if (
-                                    self.env.state[height, i] == StateType.EMPTY
-                                    and self.env.state[height, i + 1]
-                                    == StateType.GROUND
+                                    initial_state[height, i] == StateType.EMPTY
+                                    and initial_state[height, i + 1] == StateType.GROUND
                                 )
                                 else 0
-                                for i in range(self.env.state.shape[1] - 1)
+                                for i in range(self.env.shape[1] - 1)
                             ]
                         )
                     )
@@ -162,13 +173,9 @@ class TestBridgesEnv(unittest.TestCase):
         self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        self.env.step(0)
-        self.assertFalse(self.env._is_bridge_complete())
-        self.env.step(0)
-        self.assertFalse(self.env._is_bridge_complete())
-        self.env.step(2)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(0, self.env, width, mirror))
+        self.assertFalse(_step_helper(0, self.env, width, mirror))
+        self.assertTrue(_step_helper(2, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_side_completion(self, mirror):
@@ -186,9 +193,7 @@ class TestBridgesEnv(unittest.TestCase):
 
         # Side completion to starting point.
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(1, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertTrue(_step_helper(1, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_wide_endpoint(self, mirror):
@@ -209,21 +214,14 @@ class TestBridgesEnv(unittest.TestCase):
 
         # Test two completions with a wide starting point.
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(3, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(1, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(3, self.env, width, mirror))
+        self.assertTrue(_step_helper(1, self.env, width, mirror))
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(3, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(3, self.env, width, mirror))
         _step_helper(0, self.env, width, mirror)
-        _step_helper(2, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(0, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(2, self.env, width, mirror))
+        self.assertTrue(_step_helper(0, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_cliff_side_insufficient(self, mirror):
@@ -240,11 +238,8 @@ class TestBridgesEnv(unittest.TestCase):
         self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(0, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(0, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(0, self.env, width, mirror))
+        self.assertTrue(_step_helper(0, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_center_ground_surface(self, mirror):
@@ -263,11 +258,8 @@ class TestBridgesEnv(unittest.TestCase):
         self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(0, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(4, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(0, self.env, width, mirror))
+        self.assertTrue(_step_helper(4, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_center_ground_build_up(self, mirror):
@@ -286,13 +278,10 @@ class TestBridgesEnv(unittest.TestCase):
         self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
-        _step_helper(7, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(7, self.env, width, mirror))
         _step_helper(2, self.env, width, mirror)
-        _step_helper(5, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertTrue(_step_helper(5, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_center_ground_surface_and_build_up(self, mirror):
@@ -313,12 +302,9 @@ class TestBridgesEnv(unittest.TestCase):
         self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
-        _step_helper(6, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(4, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(6, self.env, width, mirror))
+        self.assertTrue(_step_helper(4, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_skip_center_ground(self, mirror):
@@ -336,13 +322,10 @@ class TestBridgesEnv(unittest.TestCase):
         self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
         _step_helper(1, self.env, width, mirror)
-        _step_helper(4, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(3, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(4, self.env, width, mirror))
+        self.assertTrue(_step_helper(3, self.env, width, mirror))
 
     @parameterized.expand([(False,), (True,)])
     def test_is_bridge_complete_multiple_center_segments(self, mirror):
@@ -360,12 +343,9 @@ class TestBridgesEnv(unittest.TestCase):
         self.env = BridgesEnv(width=width)
 
         _reset_helper(heights, self.env, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
         _step_helper(0, self.env, width, mirror)
-        _step_helper(7, self.env, width, mirror)
-        self.assertFalse(self.env._is_bridge_complete())
-        _step_helper(3, self.env, width, mirror)
-        self.assertTrue(self.env._is_bridge_complete())
+        self.assertFalse(_step_helper(7, self.env, width, mirror))
+        self.assertTrue(_step_helper(3, self.env, width, mirror))
 
 
 if __name__ == "__main__":

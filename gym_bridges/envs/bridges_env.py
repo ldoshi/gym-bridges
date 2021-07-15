@@ -40,8 +40,8 @@ class BridgesEnv(gym.Env):
 
         self.nA = width
         self.action_space = spaces.Discrete(self.nA)
-        self.max_gap_count = max_gap_count
-        self.force_standard_config = force_standard_config
+        self._max_gap_count = max_gap_count
+        self._force_standard_config = force_standard_config
 
         # These 4 block-related members are set during reset().
         self._initial_blocks = None
@@ -52,20 +52,22 @@ class BridgesEnv(gym.Env):
         # List of sets of positions at the surface of each central block.
         self._central_block_surfaces = {}
 
-        self.reset()
-
-        self.brick = 2
+        # TODO(lyric): Consider exposing brick size. We can revisit
+        # when we have multiple brick sizes or if we find we're
+        # hardcoding the brick size in multiple places. Currently
+        # _step_helper in the unit tests does hardcode the brick width.
+        self._brick = 2
 
     def _check_row(self, action, index, brick_width):
-        section = self.state[index, action : action + brick_width]
+        section = self._state[index, action : action + brick_width]
         return len(section) == brick_width and not section.any()
 
     def _place_brick(self, action, index, brick_width):
-        self.state[index, action : action + brick_width] = StateType.BRICK
+        self._state[index, action : action + brick_width] = StateType.BRICK
 
     def _is_bridge_complete(self):
         # Quick check.
-        if not self.state.any(axis=0).all():
+        if not self._state.any(axis=0).all():
             return False
 
         # Run BFS from start to end.
@@ -106,7 +108,7 @@ class BridgesEnv(gym.Env):
                     # we can break after finding a match.
                     break
 
-            if self.state[next_node] == StateType.BRICK:
+            if self._state[next_node] == StateType.BRICK:
                 assert not in_central_block_surface
                 queue.append(next_node)
                 expanded.add(next_node)
@@ -144,24 +146,24 @@ class BridgesEnv(gym.Env):
 
     def step(self, action):
         i = -1
-        while (i < self.shape[0] - 1) and self._check_row(action, i + 1, self.brick):
+        while (i < self.shape[0] - 1) and self._check_row(action, i + 1, self._brick):
             i += 1
 
         placed_successfully = i > -1 and i < self.shape[0] - 1
 
         if placed_successfully:
-            self._place_brick(action, i, self.brick)
+            self._place_brick(action, i, self._brick)
 
         done = self._is_bridge_complete()
         reward = 100 if done else -1 if placed_successfully else -5
 
-        return self.state.copy(), reward, done, {}
+        return self._state.copy(), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
         if state is not None:
             assert state.shape == self.shape
 
-            self.state = state.copy()
+            self._state = state.copy()
 
             # Initialize initial_blocks based on the provided state.
             self._initial_blocks = []
@@ -189,14 +191,14 @@ class BridgesEnv(gym.Env):
                     width = 0
 
         else:
-            self.state = np.zeros(shape=self.shape)
+            self._state = np.zeros(shape=self.shape)
 
             if not gap_count:
-                gap_count = random.randrange(1, self.max_gap_count + 1)
+                gap_count = random.randrange(1, self._max_gap_count + 1)
 
             self._initial_blocks = []
 
-            if self.force_standard_config:
+            if self._force_standard_config:
                 self._initial_blocks = [
                     InitialBlock(index=0, width=1, height=1),
                     InitialBlock(index=self.shape[1] - 1, width=1, height=1),
@@ -225,7 +227,7 @@ class BridgesEnv(gym.Env):
                 ]
 
             for initial_block in self._initial_blocks:
-                self.state[
+                self._state[
                     -initial_block.height :,
                     initial_block.index : initial_block.index + initial_block.width,
                 ] = StateType.GROUND
@@ -249,7 +251,7 @@ class BridgesEnv(gym.Env):
         self._starting_block_surface = sorted(list(self._central_block_surfaces.pop(0)))
         self._ending_block_surface = self._central_block_surfaces.pop()
 
-        return self.state.copy()
+        return self._state.copy()
 
     def render(self, mode="human"):
         print(
@@ -261,7 +263,7 @@ class BridgesEnv(gym.Env):
                     else "[]"
                     if x == StateType.BRICK
                     else "  "
-                    for x in self.state.flatten()
+                    for x in self._state.flatten()
                 ]
             )
         )
