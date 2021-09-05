@@ -355,16 +355,33 @@ class TestBridgesEnv(unittest.TestCase):
         expected_states = [env.reset() for _ in range(100)]
         regeneration_env = BridgesEnv(width=8)
         regenerated_states = [regeneration_env.reset() for _ in range(100)]
-        self.assertFalse(all([(expected == regenerated).all() for expected, regenerated in zip(expected_states, regenerated_states)]))
+        self.assertFalse(
+            all(
+                [
+                    (expected == regenerated).all()
+                    for expected, regenerated in zip(
+                        expected_states, regenerated_states
+                    )
+                ]
+            )
+        )
 
         seed = int(time.time() * 1e6)
         env = BridgesEnv(width=8, seed=seed)
         expected_states = [env.reset() for _ in range(100)]
         regeneration_env = BridgesEnv(width=8, seed=seed)
         regenerated_states = [regeneration_env.reset() for _ in range(100)]
-        self.assertTrue(all([(expected == regenerated).all() for expected, regenerated in zip(expected_states, regenerated_states)]))
+        self.assertTrue(
+            all(
+                [
+                    (expected == regenerated).all()
+                    for expected, regenerated in zip(
+                        expected_states, regenerated_states
+                    )
+                ]
+            )
+        )
 
 
-        
 if __name__ == "__main__":
     unittest.main()
