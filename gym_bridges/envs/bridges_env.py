@@ -4,14 +4,16 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 
+import dataclasses
 import numpy as np
 import random
-from typing import NamedTuple
+
 from enum import IntEnum
 from collections import deque
 
 
-class InitialBlock(NamedTuple):
+@dataclasses.dataclass
+class InitialBlock:
     index: int
     width: int
     height: int
