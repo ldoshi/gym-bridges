@@ -7,6 +7,7 @@ from gym.utils import seeding
 import numpy as np
 import random
 from typing import NamedTuple
+from typing import Union
 from enum import IntEnum
 from collections import deque
 
@@ -30,7 +31,13 @@ class BridgesEnv(gym.Env):
     # The max height of the ground of either end will be [1, width).
     # The max height of the env will be 1.5 times the width.
     # In the current implementation, a bridge will always be possible.
-    def __init__(self, width, max_gap_count=1, force_standard_config=False, seed=None):
+    def __init__(
+        self,
+        width,
+        max_gap_count=1,
+        force_standard_config=False,
+        seed: Union[int, None] = None,
+    ):
         super().__init__()
 
         assert (
