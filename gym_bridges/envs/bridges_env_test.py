@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import time
 import unittest
 
 from collections import defaultdict
@@ -346,6 +347,40 @@ class TestBridgesEnv(unittest.TestCase):
         _step_helper(0, env, width, mirror)
         self.assertFalse(_step_helper(7, env, width, mirror))
         self.assertTrue(_step_helper(3, env, width, mirror))
+
+    def test_reset_random(self):
+        """Verifies the usage of the random seed for consistent resets."""
+
+        env = BridgesEnv(width=8)
+        expected_states = [env.reset() for _ in range(100)]
+        regeneration_env = BridgesEnv(width=8)
+        regenerated_states = [regeneration_env.reset() for _ in range(100)]
+        self.assertFalse(
+            all(
+                [
+                    (expected == regenerated).all()
+                    for expected, regenerated in zip(
+                        expected_states, regenerated_states
+                    )
+                ]
+            )
+        )
+
+        seed = int(time.time() * 1e6)
+        env = BridgesEnv(width=8, seed=seed)
+        expected_states = [env.reset() for _ in range(100)]
+        regeneration_env = BridgesEnv(width=8, seed=seed)
+        regenerated_states = [regeneration_env.reset() for _ in range(100)]
+        self.assertTrue(
+            all(
+                [
+                    (expected == regenerated).all()
+                    for expected, regenerated in zip(
+                        expected_states, regenerated_states
+                    )
+                ]
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from gym.utils import seeding
 import dataclasses
 import numpy as np
 import random
-
+from typing import Union
 from enum import IntEnum
 from collections import deque
 
@@ -32,7 +32,13 @@ class BridgesEnv(gym.Env):
     # The max height of the ground of either end will be [1, width).
     # The max height of the env will be 1.5 times the width.
     # In the current implementation, a bridge will always be possible.
-    def __init__(self, width, max_gap_count=1, force_standard_config=False):
+    def __init__(
+        self,
+        width,
+        max_gap_count=1,
+        force_standard_config=False,
+        seed: Union[int, None] = None,
+    ):
         super().__init__()
 
         assert (
@@ -59,6 +65,7 @@ class BridgesEnv(gym.Env):
         # hardcoding the brick size in multiple places. Currently
         # _step_helper in the unit tests does hardcode the brick width.
         self._brick = 2
+        random.seed(seed)
 
     def _check_row(self, action, index, brick_width):
         section = self._state[index, action : action + brick_width]
