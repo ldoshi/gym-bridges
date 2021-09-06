@@ -19,15 +19,14 @@ class InitialBlock:
     height: int
 
 
-class StateType(IntEnum):
-    _order_ = "EMPTY GROUND BRICK"
-    EMPTY = 0
-    GROUND = 1
-    BRICK = 2
-
-
 class BridgesEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
+
+    class StateType(IntEnum):
+        _order_ = "EMPTY GROUND BRICK"
+        EMPTY = 0
+        GROUND = 1
+        BRICK = 2
 
     # The max height of the ground of either end will be [1, width).
     # The max height of the env will be 1.5 times the width.
@@ -72,7 +71,7 @@ class BridgesEnv(gym.Env):
         return len(section) == brick_width and not section.any()
 
     def _place_brick(self, action, index, brick_width):
-        self._state[index, action : action + brick_width] = StateType.BRICK
+        self._state[index, action : action + brick_width] = BridgesEnv.StateType.BRICK
 
     def _is_bridge_complete(self):
         # Quick check.
@@ -117,7 +116,7 @@ class BridgesEnv(gym.Env):
                     # we can break after finding a match.
                     break
 
-            if self._state[next_node] == StateType.BRICK:
+            if self._state[next_node] == BridgesEnv.StateType.BRICK:
                 assert not in_central_block_surface
                 queue.append(next_node)
                 expanded.add(next_node)
@@ -185,14 +184,15 @@ class BridgesEnv(gym.Env):
             for x in range(state_width + 1):
                 if (
                     x < state_width
-                    and state[state_base_height - 1, x] == StateType.GROUND
+                    and state[state_base_height - 1, x] == BridgesEnv.StateType.GROUND
                 ):
                     width += 1
                 else:
                     # End of block. Compute height and save block.
                     height = 0
                     while (
-                        state[state_base_height - height - 1, x - 1] == StateType.GROUND
+                        state[state_base_height - height - 1, x - 1]
+                        == BridgesEnv.StateType.GROUND
                     ):
                         height += 1
                     self._initial_blocks.append(InitialBlock(index, width, height))
@@ -239,7 +239,7 @@ class BridgesEnv(gym.Env):
                 self._state[
                     -initial_block.height :,
                     initial_block.index : initial_block.index + initial_block.width,
-                ] = StateType.GROUND
+                ] = BridgesEnv.StateType.GROUND
 
         self._central_block_surfaces = []
         for initial_block in self._initial_blocks:
@@ -268,9 +268,9 @@ class BridgesEnv(gym.Env):
             % tuple(
                 [
                     "@@"
-                    if x == StateType.GROUND
+                    if x == BridgesEnv.StateType.GROUND
                     else "[]"
-                    if x == StateType.BRICK
+                    if x == BridgesEnv.StateType.BRICK
                     else "  "
                     for x in self._state.flatten()
                 ]

@@ -7,7 +7,6 @@ from collections import defaultdict
 from parameterized import parameterized
 
 from bridges_env import BridgesEnv
-from bridges_env import StateType
 
 
 def _check_block(state, index, state_type):
@@ -42,7 +41,7 @@ def _state_builder(shape, heights):
     state = np.zeros(shape)
     state_height = state.shape[0]
     for i, height in enumerate(heights):
-        state[state_height - height :, i] = StateType.GROUND
+        state[state_height - height :, i] = BridgesEnv.StateType.GROUND
 
     return state
 
@@ -101,9 +100,11 @@ class TestBridgesEnv(unittest.TestCase):
         env = BridgesEnv(width=width, force_standard_config=True)
         height = env.shape[0] - 1
         initial_state = env.reset()
-        self.assertEqual(initial_state[height, 0], StateType.GROUND)
-        self.assertEqual(initial_state[height, width - 1], StateType.GROUND)
-        self.assertEqual(len(np.where(initial_state == StateType.GROUND)[0]), 2)
+        self.assertEqual(initial_state[height, 0], BridgesEnv.StateType.GROUND)
+        self.assertEqual(initial_state[height, width - 1], BridgesEnv.StateType.GROUND)
+        self.assertEqual(
+            len(np.where(initial_state == BridgesEnv.StateType.GROUND)[0]), 2
+        )
 
     @parameterized.expand([(3,), (9,)])
     def test_gap_count(self, width):
@@ -116,17 +117,17 @@ class TestBridgesEnv(unittest.TestCase):
             initial_state = env.reset(gap_count=gap_count)
 
             index = 0
-            state_type = StateType.GROUND
+            state_type = BridgesEnv.StateType.GROUND
             gap_counter = 0
             while index < width:
                 index = _check_block(initial_state, index, state_type)
                 self.assertTrue(isinstance(index, int))
                 self.assertGreater(index, 0)
 
-                if state_type == StateType.GROUND:
-                    state_type = StateType.EMPTY
+                if state_type == BridgesEnv.StateType.GROUND:
+                    state_type = BridgesEnv.StateType.EMPTY
                 else:
-                    state_type = StateType.GROUND
+                    state_type = BridgesEnv.StateType.GROUND
                     # Increment the gap everytime we reach the end of
                     # a gap.
                     gap_counter += 1
@@ -148,8 +149,10 @@ class TestBridgesEnv(unittest.TestCase):
                             [
                                 1
                                 if (
-                                    initial_state[height, i] == StateType.EMPTY
-                                    and initial_state[height, i + 1] == StateType.GROUND
+                                    initial_state[height, i]
+                                    == BridgesEnv.StateType.EMPTY
+                                    and initial_state[height, i + 1]
+                                    == BridgesEnv.StateType.GROUND
                                 )
                                 else 0
                                 for i in range(env.shape[1] - 1)
