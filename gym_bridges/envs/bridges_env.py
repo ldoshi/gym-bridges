@@ -168,44 +168,32 @@ class BridgesEnv(gym.Env):
         return self._state.copy(), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
+        ground = BridgesEnv.StateType.GROUND
+        empty = BridgesEnv.StateType.EMPTY
         if state is not None:
             assert state.shape == self.shape
 
             self._state = state.copy()
 
-            # Initialize initial_blocks based on the provided state.
-            self._initial_blocks = []
-
             state_base_height, state_width = self.shape
 
-            index = 0
-            width = 0
-            # The loop goes one extra iteration to capture the ending block.
-            for x in range(state_width + 1):
-                if (
-                    x < state_width
-                    and state[state_base_height - 1, x] == BridgesEnv.StateType.GROUND
-                ):
-                    width += 1
-                else:
-                    # End of block. Compute height and save block.
-                    height = 0
-                    while (
-                        state[state_base_height - height - 1, x - 1]
-                        == BridgesEnv.StateType.GROUND
-                    ):
-                        height += 1
-                    self._initial_blocks.append(InitialBlock(index, width, height))
-                    index = x + 1
-                    width = 0
+            indices = np.argwhere(state[-1, :] == empty)
+            widths = np.diff(indices, append=state_width) - 1
+            mask = widths > 0
+            indices, widths = indices[mask] + 1, widths[mask]
+            upside_down_spaces = state[::-1, indices + widths - 1] == empty
+            heights = np.argmax(upside_down_spaces, axis=0) + 1
+
+            # Initialize initial_blocks based on the provided state.
+            self._initial_blocks = [
+                InitialBlock(*args) for args in zip(indices, widths, heights)
+            ]
 
         else:
             self._state = np.zeros(shape=self.shape)
 
             if not gap_count:
                 gap_count = random.randrange(1, self._max_gap_count + 1)
-
-            self._initial_blocks = []
 
             if self._force_standard_config:
                 self._initial_blocks = [
@@ -223,36 +211,34 @@ class BridgesEnv(gym.Env):
                 # Ensure the first block starts at index 0 and the last
                 # block can compute its width.
                 positions = np.array(sorted([0] + positions + [self.shape[1]]))
-                width = np.diff(positions)[::2]
-                index = positions[::2]
+                widths = np.diff(positions)[::2]
+                indices = positions[::2]
                 # We constrain the height of any given block to the
                 # *width* of the environment. The environment's height
                 # is set at 1.5*environment width to ensure a bridge can
                 # always be built without hitting the top of the
                 # environment. The height must be at least 1.
-                height = random.choices(range(1, self.shape[1]), k=len(index))
+                heights = random.choices(range(1, self.shape[1]), k=len(index))
                 self._initial_blocks = [
-                    InitialBlock(i, w, h) for i, w, h in zip(index, width, height)
+                    InitialBlock(*args) for args in zip(indices, widths, heights)
                 ]
 
             for initial_block in self._initial_blocks:
-                self._state[
-                    -initial_block.height :,
-                    initial_block.index : initial_block.index + initial_block.width,
-                ] = BridgesEnv.StateType.GROUND
-
+                index, width, height = (
+                    initial_block.index,
+                    initial_block.width,
+                    initial_block.height,
+                )
+                self._state[-height:, index : index + width] = ground
         self._central_block_surfaces = []
         for initial_block in self._initial_blocks:
+            index, width, depth = (
+                initial_block.index,
+                initial_block.width,
+                self.shape[0] - initial_block.height,
+            )
             self._central_block_surfaces.append(
-                set(
-                    [
-                        (
-                            self.shape[0] - initial_block.height,
-                            initial_block.index + x,
-                        )
-                        for x in range(initial_block.width)
-                    ]
-                )
+                {(depth, index + x) for x in range(width)}
             )
 
         # It's slightly better for _starting_block_surface to be a
@@ -263,16 +249,10 @@ class BridgesEnv(gym.Env):
         return self._state.copy()
 
     def render(self, mode="human"):
-        print(
-            (("%s" * self.shape[1] + "\n") * self.shape[0])
-            % tuple(
-                [
-                    "@@"
-                    if x == BridgesEnv.StateType.GROUND
-                    else "[]"
-                    if x == BridgesEnv.StateType.BRICK
-                    else "  "
-                    for x in self._state.flatten()
-                ]
-            )
-        )
+        mapping = {
+            BridgesEnv.StateType.GROUND: "@@",
+            BridgesEnv.StateType.BRICK: "[]",
+            BridgesEnv.StateType.EMPTY: "  ",
+        }
+        flat_repr = tuple([mapping[x] for x in self._state.flatten()])
+        print((("%s" * self.shape[1] + "\n") * self.shape[0]) % flat_repr)
