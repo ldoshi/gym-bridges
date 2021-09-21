@@ -175,6 +175,7 @@ class BridgesEnv(gym.Env):
 
             # The indices for all empty cells in the lowest row
             gap_indices = np.argwhere(state[-1, :] == BridgesEnv.StateType.EMPTY)
+            gap_indices = np.insert(gap_indices, 0, -1)
 
             # Compute the widths of all blocks
             widths = np.diff(gap_indices, append=self.shape[1]) - 1
