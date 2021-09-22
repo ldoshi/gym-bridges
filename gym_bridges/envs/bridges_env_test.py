@@ -93,6 +93,23 @@ class TestBridgesEnv(unittest.TestCase):
         self.assertEqual(reward, 100)
         self.assertTrue(done)
 
+    def test_reset_copies_state(self):
+        """Verifies that reset copies the state, if provided as an argument."""
+        env = BridgesEnv(width=4)
+        state = env.reset()
+        state_again = env.reset(state)
+        self.assertFalse(state is state_again)
+
+    def test_step_copies_state(self):
+        """Verifies that the state returned by reset and step is a copy of the internal state."""
+        env = BridgesEnv(width=4)
+        state = env.reset()
+        next_state, _, _, _ = env.step(0)
+        self.assertFalse(state is next_state)
+
+        next_next_state, _, _, _ = env.step(0)
+        self.assertFalse(next_state is next_next_state)
+
     @parameterized.expand([(3,), (9,)])
     def test_force_standard_config(self, width):
         """The standard configuration only has ground at the bottom left
