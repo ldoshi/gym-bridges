@@ -20,6 +20,8 @@ Use reinstall.sh within the virtual environment both to install gym-bridges and 
 
 ## Sample Bridge
 
+<pre>
   [][][][]
-[][]    [][]  [][][][]
+[][]    [][]  [][][][]    
 @@        @@@@@@    @@
+</pre>
