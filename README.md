@@ -17,3 +17,11 @@ Only a 1x2 bricks can be placed. The action space consists of integers [0,w), si
 Use the virtual environment from rome-wasnt-built-in-a-day.
 
 Use reinstall.sh within the virtual environment both to install gym-bridges and to reinstall it after making any changes to the environment.
+
+## Sample Bridge
+
+<pre>
+  [][][][]
+[][]    [][]  [][][][]    
+@@        @@@@@@    @@
+</pre>
