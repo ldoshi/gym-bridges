@@ -36,7 +36,7 @@ class BridgesEnv(gym.Env):
         width,
         max_gap_count=1,
         force_standard_config=False,
-        seed: Union[int, None] = None,
+        seed: Union[int, float, None] = None,
     ):
         super().__init__()
 
