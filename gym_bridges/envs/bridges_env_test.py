@@ -38,7 +38,7 @@ def _check_block(state, index, state_type):
 
 
 def _state_builder(shape, heights):
-    state = np.zeros(shape)
+    state = np.zeros(shape, dtype=int)
     state_height = state.shape[0]
     for i, height in enumerate(heights):
         state[state_height - height :, i] = BridgesEnv.StateType.GROUND

@@ -201,7 +201,7 @@ class BridgesEnv(gym.Env):
             ]
 
         else:
-            self._state = np.zeros(shape=self.shape)
+            self._state = np.zeros(shape=self.shape, dtype=int)
 
             if not gap_count:
                 gap_count = random.randrange(1, self._max_gap_count + 1)
