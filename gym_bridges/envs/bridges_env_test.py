@@ -5,7 +5,7 @@ import unittest
 from collections import defaultdict
 from parameterized import parameterized
 
-from bridges_env import BridgesEnv
+from .bridges_env import BridgesEnv
 
 
 def _check_block(state, index, state_type):
