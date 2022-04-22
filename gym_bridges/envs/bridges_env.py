@@ -10,6 +10,7 @@ import gym_bridges.renderer.renderer_config as renderer_config
 import sys
 import time
 import os
+import itertools
 from typing import Union, Optional
 from enum import IntEnum
 from collections import deque
@@ -287,33 +288,17 @@ class BridgesEnv(gym.Env):
             block_size,
         )
 
-        for x_coordinate, x_window_coordinate in zip(
-            x_coordinates, x_window_coordinates
+        for state_block, (y_window_coordinate, x_window_coordinate) in zip(
+            self._state.flatten(),
+            itertools.product(y_window_coordinates, x_window_coordinates),
         ):
-            for y_coordinate, y_window_coordinate in zip(
-                y_coordinates, y_window_coordinates
-            ):
-                rect = pygame.Rect(
-                    x_window_coordinate,
-                    y_window_coordinate,
-                    block_size,
-                    block_size,
-                )
-                if (
-                    self._state[y_coordinate][x_coordinate]
-                    == BridgesEnv.StateType.GROUND
-                ):
-                    screen.blit(textures[BridgesEnv.StateType.GROUND], rect)
-                elif (
-                    self._state[y_coordinate][x_coordinate]
-                    == BridgesEnv.StateType.BRICK
-                ):
-                    screen.blit(textures[BridgesEnv.StateType.BRICK], rect)
-                elif (
-                    self._state[y_coordinate][x_coordinate]
-                    == BridgesEnv.StateType.EMPTY
-                ):
-                    screen.blit(textures[BridgesEnv.StateType.EMPTY], rect)
+            rect = pygame.Rect(
+                x_window_coordinate,
+                y_window_coordinate,
+                block_size,
+                block_size,
+            )
+            screen.blit(textures[state_block], rect)
 
     def render(self, mode="human"):
         if mode == "human":
