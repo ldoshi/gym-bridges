@@ -49,6 +49,7 @@ class BridgesEnv(gym.Env):
         ), "The max gap count must be less than half the width"
         self.shape = (int(1.5 * width), width)
 
+        self._state: Optional[np.ndarray] = None
         self.nA = width
         self.action_space = spaces.Discrete(self.nA)
         self._max_gap_count = max_gap_count

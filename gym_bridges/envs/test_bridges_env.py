@@ -9,6 +9,16 @@ from parameterized import parameterized
 from gym_bridges.envs.bridges_env import BridgesEnv
 
 
+@pytest.mark.parametrize("width", [3, 9])
+def test_force_standard_config_render(width):
+    """The standard configuration only has ground at the bottom left
+    and right locations of the env."""
+    env = BridgesEnv(width=width, force_standard_config=True)
+    env.reset()
+    env.render(mode="pygame")
+    time.sleep(5)
+
+
 def _check_block(state, index, state_type):
     """Verifies that the block start at index is grounded in the environment and
     maintains a level height until the next gap. Returns the index following this
