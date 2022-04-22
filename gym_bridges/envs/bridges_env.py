@@ -70,8 +70,7 @@ class BridgesEnv(gym.Env):
         self._brick = 2
         random.seed(seed)
 
-        self._pygame_initialized = False
-        self.screen: Optional[pygame.Surface] = None
+        self._initialize_pygame = True
 
     def _check_row(self, action, index, brick_width):
         section = self._state[index, action : action + brick_width]
@@ -268,12 +267,7 @@ class BridgesEnv(gym.Env):
 
         return self._state.copy()
 
-    def _draw_state(
-        self, screen: pygame.Surface, textures: dict[StateType, pygame.Surface]
-    ) -> None:
-        x_coordinates = np.arange(0, self.shape[1])
-        y_coordinates = np.arange(0, self.shape[0])
-
+    def _draw_state(self) -> None:
         block_size = renderer_config.BLOCK_SIZE * 0.5
 
         x_window_coordinates = np.arange(
@@ -297,7 +291,34 @@ class BridgesEnv(gym.Env):
                 block_size,
                 block_size,
             )
-            screen.blit(textures[state_block], rect)
+            self._screen.blit(self._textures[state_block], rect)
+
+    def _initialize_pygame_if_necessary(self) -> None:
+        if self._initialize_pygame:
+            pygame.init()
+
+            self._screen = pygame.display.set_mode(
+                (renderer_config.WINDOW_WIDTH, renderer_config.WINDOW_HEIGHT)
+            )
+            self._screen.fill(renderer_config.BLACK)
+
+            # Load the textures with a path relative to the game source code.
+            base_path = os.path.dirname(os.path.dirname(__file__))
+            textures_path = os.path.join(base_path, "renderer", "assets")
+
+            self._textures = {
+                BridgesEnv.StateType.GROUND: pygame.image.load(
+                    os.path.join(textures_path, "grass_block.png")
+                ),
+                BridgesEnv.StateType.BRICK: pygame.image.load(
+                    os.path.join(textures_path, "mossy_stone_bricks.png")
+                ),
+                BridgesEnv.StateType.EMPTY: pygame.image.load(
+                    os.path.join(textures_path, "light_blue_wool.png")
+                ),
+            }
+
+            self._initialize_pygame = False
 
     def render(self, mode="human"):
         if mode == "human":
@@ -310,33 +331,8 @@ class BridgesEnv(gym.Env):
             print((("%s" * self.shape[1] + "\n") * self.shape[0]) % flat_repr)
             return
         if mode == "pygame":
-            if not self._pygame_initialized:
-                pygame.init()
-
-                self.screen = pygame.display.set_mode(
-                    (renderer_config.WINDOW_WIDTH, renderer_config.WINDOW_HEIGHT)
-                )
-                self.screen.fill(renderer_config.BLACK)
-
-                # Load the textures with a path relative to the game source code.
-                base_path = os.path.dirname(os.path.dirname(__file__))
-                textures_path = os.path.join(base_path, "renderer", "assets")
-
-                self.textures = {
-                    BridgesEnv.StateType.GROUND: pygame.image.load(
-                        os.path.join(textures_path, "grass_block.png")
-                    ),
-                    BridgesEnv.StateType.BRICK: pygame.image.load(
-                        os.path.join(textures_path, "mossy_stone_bricks.png")
-                    ),
-                    BridgesEnv.StateType.EMPTY: pygame.image.load(
-                        os.path.join(textures_path, "light_blue_wool.png")
-                    ),
-                }
-
-                self._pygame_initialized = True
-
-            self._draw_state(screen=self.screen, textures=self.textures)
+            self._initialize_pygame_if_necessary()
+            self._draw_state()
 
             # Drawing the state takes some time.
             time.sleep(1)
