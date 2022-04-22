@@ -70,7 +70,6 @@ class BridgesEnv(gym.Env):
         self._brick = 2
         random.seed(seed)
 
-        # Check for whether the renderer has already been initialized.
         self._pygame_initialized = False
         self.screen: Optional[pygame.Surface] = None
 
@@ -269,9 +268,9 @@ class BridgesEnv(gym.Env):
 
         return self._state.copy()
 
-    def draw_state(
+    def _draw_state(
         self, screen: pygame.Surface, textures: dict[StateType, pygame.Surface]
-    ):
+    ) -> None:
         x_coordinates = np.arange(0, self.shape[1])
         y_coordinates = np.arange(0, self.shape[0])
 
@@ -309,7 +308,8 @@ class BridgesEnv(gym.Env):
             }
             flat_repr = tuple([mapping[x] for x in self._state.flatten()])
             print((("%s" * self.shape[1] + "\n") * self.shape[0]) % flat_repr)
-        elif mode == "pygame":
+            return
+        if mode == "pygame":
             if not self._pygame_initialized:
                 pygame.init()
 
@@ -336,7 +336,7 @@ class BridgesEnv(gym.Env):
 
                 self._pygame_initialized = True
 
-            self.draw_state(screen=self.screen, textures=self.textures)
+            self._draw_state(screen=self.screen, textures=self.textures)
 
             # Drawing the state takes some time.
             time.sleep(1)
@@ -346,3 +346,4 @@ class BridgesEnv(gym.Env):
                     sys.exit()
 
             pygame.display.update()
+            return
