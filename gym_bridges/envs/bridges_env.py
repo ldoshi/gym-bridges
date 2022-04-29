@@ -170,7 +170,7 @@ class BridgesEnv(gym.Env):
             self._place_brick(action, i, self._brick)
 
         done = self._is_bridge_complete()
-        reward = 100 if done else -1 if placed_successfully else -5
+        reward = 0 if done else -1 if placed_successfully else -2
 
         return self._state.copy(), reward, done, {}
 
