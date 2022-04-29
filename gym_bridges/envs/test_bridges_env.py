@@ -16,7 +16,6 @@ def test_force_standard_config_render(width):
     env = BridgesEnv(width=width, force_standard_config=True)
     env.reset()
     env.render(mode="pygame")
-    time.sleep(5)
 
 
 def _check_block(state, index, state_type):

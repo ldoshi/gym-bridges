@@ -295,31 +295,32 @@ class BridgesEnv(gym.Env):
             self._screen.blit(self._textures[state_block], rect)
 
     def _initialize_pygame_if_necessary(self) -> None:
-        if self._initialize_pygame:
-            pygame.init()
+        if not self._initialize_pygame:
+            return
+        pygame.init()
 
-            self._screen = pygame.display.set_mode(
-                (renderer_config.WINDOW_WIDTH, renderer_config.WINDOW_HEIGHT)
-            )
-            self._screen.fill(renderer_config.BLACK)
+        self._screen = pygame.display.set_mode(
+            (renderer_config.WINDOW_WIDTH, renderer_config.WINDOW_HEIGHT)
+        )
+        self._screen.fill(renderer_config.BLACK)
 
-            # Load the textures with a path relative to the game source code.
-            base_path = os.path.dirname(os.path.dirname(__file__))
-            textures_path = os.path.join(base_path, "renderer", "assets")
+        # Load the textures with a path relative to the game source code.
+        base_path = os.path.dirname(os.path.dirname(__file__))
+        textures_path = os.path.join(base_path, "renderer", "assets")
 
-            self._textures = {
-                BridgesEnv.StateType.GROUND: pygame.image.load(
-                    os.path.join(textures_path, "grass_block.png")
-                ),
-                BridgesEnv.StateType.BRICK: pygame.image.load(
-                    os.path.join(textures_path, "mossy_stone_bricks.png")
-                ),
-                BridgesEnv.StateType.EMPTY: pygame.image.load(
-                    os.path.join(textures_path, "light_blue_wool.png")
-                ),
-            }
+        self._textures = {
+            BridgesEnv.StateType.GROUND: pygame.image.load(
+                os.path.join(textures_path, "grass_block.png")
+            ),
+            BridgesEnv.StateType.BRICK: pygame.image.load(
+                os.path.join(textures_path, "mossy_stone_bricks.png")
+            ),
+            BridgesEnv.StateType.EMPTY: pygame.image.load(
+                os.path.join(textures_path, "light_blue_wool.png")
+            ),
+        }
 
-            self._initialize_pygame = False
+        self._initialize_pygame = False
 
     def render(self, mode="human"):
         if mode == "human":
