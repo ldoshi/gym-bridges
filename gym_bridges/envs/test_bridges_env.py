@@ -6,7 +6,16 @@ import unittest
 from collections import defaultdict
 from parameterized import parameterized
 
-from bridges_env import BridgesEnv
+from gym_bridges.envs.bridges_env import BridgesEnv
+
+
+@pytest.mark.parametrize("width", [3, 9])
+def test_force_standard_config_render(width):
+    """The standard configuration only has ground at the bottom left
+    and right locations of the env."""
+    env = BridgesEnv(width=width, force_standard_config=True)
+    env.reset()
+    env.render(mode="pygame")
 
 
 def _check_block(state, index, state_type):

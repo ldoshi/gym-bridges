@@ -1,5 +1,3 @@
-import pdb
-
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
@@ -7,7 +5,13 @@ from gym.utils import seeding
 import dataclasses
 import numpy as np
 import random
-from typing import Union
+import pygame
+import gym_bridges.renderer.renderer_config as renderer_config
+import sys
+import time
+import os
+import itertools
+from typing import Union, Optional
 from enum import IntEnum
 from collections import deque
 
@@ -20,7 +24,7 @@ class InitialBlock:
 
 
 class BridgesEnv(gym.Env):
-    metadata = {"render.modes": ["human"]}
+    metadata = {"render.modes": ["human", "pygame"]}
 
     class StateType(IntEnum):
         _order_ = "EMPTY GROUND BRICK"
@@ -45,6 +49,7 @@ class BridgesEnv(gym.Env):
         ), "The max gap count must be less than half the width"
         self.shape = (int(1.5 * width), width)
 
+        self._state: Optional[np.ndarray] = None
         self.nA = width
         self.action_space = spaces.Discrete(self.nA)
         self._max_gap_count = max_gap_count
@@ -65,6 +70,8 @@ class BridgesEnv(gym.Env):
         # _step_helper in the unit tests does hardcode the brick width.
         self._brick = 2
         random.seed(seed)
+
+        self._initialize_pygame = True
 
     def _check_row(self, action, index, brick_width):
         section = self._state[index, action : action + brick_width]
@@ -261,11 +268,80 @@ class BridgesEnv(gym.Env):
 
         return self._state.copy()
 
-    def render(self, mode="human"):
-        mapping = {
-            BridgesEnv.StateType.GROUND: "@@",
-            BridgesEnv.StateType.BRICK: "[]",
-            BridgesEnv.StateType.EMPTY: "  ",
+    def _draw_state(self) -> None:
+        block_size = renderer_config.BLOCK_SIZE * 0.5
+
+        x_window_coordinates = np.arange(
+            renderer_config.WINDOW_WIDTH // 2 - block_size * self.shape[1] // 2,
+            renderer_config.WINDOW_WIDTH // 2 + block_size * self.shape[1] // 2,
+            block_size,
+        )
+        y_window_coordinates = np.arange(
+            renderer_config.WINDOW_HEIGHT // 2 - block_size * self.shape[0] // 2,
+            renderer_config.WINDOW_HEIGHT // 2 + block_size * self.shape[0] // 2,
+            block_size,
+        )
+
+        for state_block, (y_window_coordinate, x_window_coordinate) in zip(
+            self._state.flatten(),
+            itertools.product(y_window_coordinates, x_window_coordinates),
+        ):
+            rect = pygame.Rect(
+                x_window_coordinate,
+                y_window_coordinate,
+                block_size,
+                block_size,
+            )
+            self._screen.blit(self._textures[state_block], rect)
+
+    def _initialize_pygame_if_necessary(self) -> None:
+        if not self._initialize_pygame:
+            return
+        pygame.init()
+
+        self._screen = pygame.display.set_mode(
+            (renderer_config.WINDOW_WIDTH, renderer_config.WINDOW_HEIGHT)
+        )
+        self._screen.fill(renderer_config.BLACK)
+
+        # Load the textures with a path relative to the game source code.
+        base_path = os.path.dirname(os.path.dirname(__file__))
+        textures_path = os.path.join(base_path, "renderer", "assets")
+
+        self._textures = {
+            BridgesEnv.StateType.GROUND: pygame.image.load(
+                os.path.join(textures_path, "grass_block.png")
+            ),
+            BridgesEnv.StateType.BRICK: pygame.image.load(
+                os.path.join(textures_path, "mossy_stone_bricks.png")
+            ),
+            BridgesEnv.StateType.EMPTY: pygame.image.load(
+                os.path.join(textures_path, "light_blue_wool.png")
+            ),
         }
-        flat_repr = tuple([mapping[x] for x in self._state.flatten()])
-        print((("%s" * self.shape[1] + "\n") * self.shape[0]) % flat_repr)
+
+        self._initialize_pygame = False
+
+    def render(self, mode="human"):
+        if mode == "human":
+            mapping = {
+                BridgesEnv.StateType.GROUND: "@@",
+                BridgesEnv.StateType.BRICK: "[]",
+                BridgesEnv.StateType.EMPTY: "  ",
+            }
+            flat_repr = tuple([mapping[x] for x in self._state.flatten()])
+            print((("%s" * self.shape[1] + "\n") * self.shape[0]) % flat_repr)
+            return
+        if mode == "pygame":
+            self._initialize_pygame_if_necessary()
+            self._draw_state()
+
+            # Drawing the state takes some time.
+            time.sleep(1)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+            pygame.display.update()
+            return
