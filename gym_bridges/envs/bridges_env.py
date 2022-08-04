@@ -5,7 +5,6 @@ from gym.utils import seeding
 import dataclasses
 import numpy as np
 import random
-import pygame
 import gym_bridges.renderer.renderer_config as renderer_config
 import sys
 import time
@@ -14,6 +13,12 @@ import itertools
 from typing import Union, Optional
 from enum import IntEnum
 from collections import deque
+from os import environ
+
+# Disable "Hello from the pygame community". This order of importing is required.
+environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+
+import pygame
 
 
 @dataclasses.dataclass
