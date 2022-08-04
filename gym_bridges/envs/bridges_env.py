@@ -15,7 +15,7 @@ from enum import IntEnum
 from collections import deque
 from os import environ
 
-# Disable "Hello from the pygame community". This order of importing is required
+# Disable "Hello from the pygame community". This order of importing is required.
 environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import pygame
