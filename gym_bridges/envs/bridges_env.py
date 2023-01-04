@@ -342,7 +342,7 @@ class BridgesEnv(gym.Env):
             self._draw_state()
 
             # Drawing the state takes some time.
-            time.sleep(.03)
+            time.sleep(0.03)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
