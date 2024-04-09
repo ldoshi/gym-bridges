@@ -37,9 +37,10 @@ class BridgesEnv(gym.Env):
     # In the current implementation, a bridge will always be possible.
     def __init__(
         self,
-        width,
-        max_gap_count=1,
-        force_standard_config=False,
+        width:int ,
+        max_valid_brick_count: int | None = None,
+        max_gap_count:int =1,
+        force_standard_config:bool =False,
         seed: Union[int, float, None] = None,
     ):
         super().__init__()
@@ -71,6 +72,11 @@ class BridgesEnv(gym.Env):
         self._brick = 2
         random.seed(seed)
 
+        # The required number of valid brick placements to end the
+        # episode if the bridge is not built.
+        self._max_valid_brick_count = max_valid_brick_count
+        self._valid_brick_count = 0 
+        
         self._initialize_pygame = True
 
     def _check_row(self, action, index, brick_width):
@@ -168,13 +174,15 @@ class BridgesEnv(gym.Env):
 
         if placed_successfully:
             self._place_brick(action, i, self._brick)
+            self._valid_brick_count += 1
 
-        done = self._is_bridge_complete()
+        done = self._is_bridge_complete() or (self._max_valid_brick_count is not None and self._valid_brick_count == self._max_valid_brick_count)
         reward = 0 if done else -1 if placed_successfully else -2
 
         return self._state.copy(), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
+        self._valid_brick_count = 0
         if state is not None:
             assert state.shape == self.shape
 

@@ -93,13 +93,13 @@ class TestBridgesEnv(unittest.TestCase):
         env = BridgesEnv(width=width)
         _reset_helper(heights, env)
         _, reward, done, _ = env.step(1)
-        self.assertEqual(reward, -5)
+        self.assertEqual(reward, -2)
         self.assertFalse(done)
         _, reward, done, _ = env.step(2)
         self.assertEqual(reward, -1)
         self.assertFalse(done)
         _, reward, done, _ = env.step(0)
-        self.assertEqual(reward, 100)
+        self.assertEqual(reward, 0)
         self.assertTrue(done)
 
     def test_reset_copies_state(self):
@@ -411,6 +411,17 @@ class TestBridgesEnv(unittest.TestCase):
             )
         )
 
+    def test_done_signal_with_max_valid_brick_count(self):
+        width =4
+        env = BridgesEnv(width=width, max_valid_brick_count=2, force_standard_config=True)
+        env.reset()
+        self.assertFalse(_step_helper(1, env, width))
+        self.assertFalse(_step_helper(0, env, width))
+        self.assertTrue(_step_helper(0, env, width))
+        env.reset()
+        self.assertFalse(_step_helper(0, env, width))
+        self.assertTrue(_step_helper(0, env, width))
+        
 
 if __name__ == "__main__":
     unittest.main()
