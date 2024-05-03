@@ -15,6 +15,7 @@ from typing import Union, Optional
 from enum import IntEnum
 from collections import deque
 
+_REWARD_SCALE = 100
 
 @dataclasses.dataclass
 class InitialBlock:
@@ -75,7 +76,11 @@ class BridgesEnv(gym.Env):
 
     def _check_row(self, action, index, brick_width):
         section = self._state[index, action : action + brick_width]
-        return len(section) == brick_width and not section.any()
+        return not section.any()
+
+    def _off_edge(self, action, index, brick_width):
+        section = self._state[index, action : action + brick_width]
+        return len(section) != brick_width
 
     def _place_brick(self, action, index, brick_width):
         self._state[index, action : action + brick_width] = BridgesEnv.StateType.BRICK
@@ -164,14 +169,24 @@ class BridgesEnv(gym.Env):
         while (i < self.shape[0] - 1) and self._check_row(action, i + 1, self._brick):
             i += 1
 
-        placed_successfully = i > -1 and i < self.shape[0] - 1
+        placed_successfully = i > -1 and i <= self.shape[0] - 1
 
         if placed_successfully:
             self._place_brick(action, i, self._brick)
 
-        done = self._is_bridge_complete()
-        reward = 0 if done else -1 if placed_successfully else -2
+        success = self._is_bridge_complete()
+        over_top = (i == -1)
 
+        if i == -1:
+            reward = self.nA * -10 / _REWARD_SCALE
+        elif self._off_edge(action, i, self._brick):
+            reward = self.nA * -3 / _REWARD_SCALE
+        elif i == (self.shape[0] - 1):
+            reward = self.nA * -3 / _REWARD_SCALE
+        else:
+            reward = -1 / _REWARD_SCALE
+
+        done = success or over_top
         return self._state.copy(), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
