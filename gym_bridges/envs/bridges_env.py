@@ -15,7 +15,7 @@ from typing import Union, Optional
 from enum import IntEnum
 from collections import deque
 
-_REWARD_SCALE = 100
+_REWARD_SCALE = 10
 
 @dataclasses.dataclass
 class InitialBlock:
@@ -178,7 +178,7 @@ class BridgesEnv(gym.Env):
         over_top = (i == -1)
 
         if i == -1:
-            reward = self.nA * -10 / _REWARD_SCALE
+            reward = self.nA * -3 / _REWARD_SCALE
         elif self._off_edge(action, i, self._brick):
             reward = self.nA * -3 / _REWARD_SCALE
         elif i == (self.shape[0] - 1):
@@ -187,6 +187,7 @@ class BridgesEnv(gym.Env):
             reward = -1 / _REWARD_SCALE
 
         done = success or over_top
+        
         return self._state.copy(), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
