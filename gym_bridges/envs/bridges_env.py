@@ -5,7 +5,6 @@ from gym.utils import seeding
 import dataclasses
 import numpy as np
 import random
-import pygame
 import gym_bridges.renderer.renderer_config as renderer_config
 import sys
 import time
@@ -14,6 +13,12 @@ import itertools
 from typing import Union, Optional
 from enum import IntEnum
 from collections import deque
+from os import environ
+
+# Disable "Hello from the pygame community". This order of importing is required.
+environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+
+import pygame
 
 _REWARD_SCALE = 10
 
@@ -38,9 +43,10 @@ class BridgesEnv(gym.Env):
     # In the current implementation, a bridge will always be possible.
     def __init__(
         self,
-        width,
-        max_gap_count=1,
-        force_standard_config=False,
+        width: int,
+        max_valid_brick_count: int | None = None,
+        max_gap_count: int = 1,
+        force_standard_config: bool = False,
         seed: Union[int, float, None] = None,
     ):
         super().__init__()
@@ -71,6 +77,11 @@ class BridgesEnv(gym.Env):
         # _step_helper in the unit tests does hardcode the brick width.
         self._brick = 2
         random.seed(seed)
+
+        # The required number of valid brick placements to end the
+        # episode if the bridge is not built.
+        self._max_valid_brick_count = max_valid_brick_count
+        self._valid_brick_count = 0
 
         self._initialize_pygame = True
 
@@ -173,6 +184,7 @@ class BridgesEnv(gym.Env):
 
         if placed_successfully:
             self._place_brick(action, i, self._brick)
+            self._valid_brick_count += 1
 
         success = self._is_bridge_complete()
         over_top = (i == -1)
@@ -191,6 +203,7 @@ class BridgesEnv(gym.Env):
         return self._state.copy(), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
+        self._valid_brick_count = 0
         if state is not None:
             assert state.shape == self.shape
 
@@ -263,9 +276,9 @@ class BridgesEnv(gym.Env):
                     initial_block.width,
                     initial_block.height,
                 )
-                self._state[
-                    -height:, index : index + width
-                ] = BridgesEnv.StateType.GROUND
+                self._state[-height:, index : index + width] = (
+                    BridgesEnv.StateType.GROUND
+                )
         self._central_block_surfaces = []
         for initial_block in self._initial_blocks:
             index, width, depth = (
@@ -353,7 +366,7 @@ class BridgesEnv(gym.Env):
             self._draw_state()
 
             # Drawing the state takes some time.
-            time.sleep(.03)
+            time.sleep(0.03)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()

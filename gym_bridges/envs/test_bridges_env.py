@@ -229,14 +229,16 @@ class TestBridgesEnv(unittest.TestCase):
                     int(
                         np.sum(
                             [
-                                1
-                                if (
-                                    initial_state[height, i]
-                                    == BridgesEnv.StateType.EMPTY
-                                    and initial_state[height, i + 1]
-                                    == BridgesEnv.StateType.GROUND
+                                (
+                                    1
+                                    if (
+                                        initial_state[height, i]
+                                        == BridgesEnv.StateType.EMPTY
+                                        and initial_state[height, i + 1]
+                                        == BridgesEnv.StateType.GROUND
+                                    )
+                                    else 0
                                 )
-                                else 0
                                 for i in range(env.shape[1] - 1)
                             ]
                         )
@@ -466,6 +468,19 @@ class TestBridgesEnv(unittest.TestCase):
                 ]
             )
         )
+
+    def test_done_signal_with_max_valid_brick_count(self):
+        width = 4
+        env = BridgesEnv(
+            width=width, max_valid_brick_count=2, force_standard_config=True
+        )
+        env.reset()
+        self.assertFalse(_step_helper(1, env, width))
+        self.assertFalse(_step_helper(0, env, width))
+        self.assertTrue(_step_helper(0, env, width))
+        env.reset()
+        self.assertFalse(_step_helper(0, env, width))
+        self.assertTrue(_step_helper(0, env, width))
 
 
 if __name__ == "__main__":
