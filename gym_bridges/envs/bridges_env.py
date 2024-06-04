@@ -178,11 +178,11 @@ class BridgesEnv(gym.Env):
         over_top = (i == -1)
 
         if i == -1:
-            reward = self.nA * -3 / _REWARD_SCALE
+            reward = -10 / _REWARD_SCALE
         elif self._off_edge(action, i, self._brick):
-            reward = self.nA * -3 / _REWARD_SCALE
+            reward = -10 / _REWARD_SCALE
         elif i == (self.shape[0] - 1):
-            reward = self.nA * -3 / _REWARD_SCALE
+            reward = -10 / _REWARD_SCALE
         else:
             reward = -1 / _REWARD_SCALE
 
