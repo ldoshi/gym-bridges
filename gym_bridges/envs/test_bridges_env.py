@@ -92,14 +92,70 @@ class TestBridgesEnv(unittest.TestCase):
         width = len(heights)
         env = BridgesEnv(width=width)
         _reset_helper(heights, env)
+
+        # Bad brick in the hole.
         _, reward, done, _ = env.step(1)
-        self.assertEqual(reward, -2)
+        self.assertEqual(reward, -1)
+        self.assertTrue(done)
+
+        _reset_helper(heights, env)
+
+        # Bad brick on the right side.
+        _, reward, done, _ = env.step(3)
+        self.assertEqual(reward, -1)
+        self.assertFalse(done)
+
+        _reset_helper(heights, env)
+
+        # Bad brick off the top.
+        for _ in range(6):
+            _, reward, done, _ = env.step(0)
+        self.assertEqual(reward, -1)
+        self.assertTrue(done)     
+        
+        _reset_helper(heights, env)
+
+        # Standard simple bridge.
+        _, reward, done, _ = env.step(2)
+        self.assertEqual(reward, -.1)
+        self.assertFalse(done)
+        _, reward, done, _ = env.step(0)
+        self.assertEqual(reward, -.1)
+        self.assertTrue(done)
+
+    def test_bridge_with_bad_brick(self):
+        # Bridge including a bad brick in the hole still completes.
+        heights = [1, 0, 0, 0, 0, 1]
+        width = len(heights)
+        env = BridgesEnv(width=width)
+        _reset_helper(heights, env)
+
+        _, reward, done, _ = env.step(0)
+        self.assertEqual(reward, -.1)
+        self.assertFalse(done)
+        _, reward, done, _ = env.step(3)
+        self.assertEqual(reward, -1)
         self.assertFalse(done)
         _, reward, done, _ = env.step(2)
+        self.assertEqual(reward, -.1)
+        self.assertTrue(done)
+
+        # Bridge including a bad brick on the right still completes.
+        heights = [1, 0, 0, 1]
+        width = len(heights)
+        env = BridgesEnv(width=width)
+        _reset_helper(heights, env)
+        _, reward, done, _ = env.step(3)
         self.assertEqual(reward, -1)
         self.assertFalse(done)
         _, reward, done, _ = env.step(0)
-        self.assertEqual(reward, 0)
+        self.assertEqual(reward, -.1)
+        self.assertFalse(done)
+        _, reward, done, _ = env.step(2)
+        self.assertEqual(reward, -.1)
+        self.assertFalse(done)
+        _, reward, done, _ = env.step(0)
+        self.assertEqual(reward, -.1)
         self.assertTrue(done)
 
     def test_reset_copies_state(self):
