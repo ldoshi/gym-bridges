@@ -210,7 +210,7 @@ class BridgesEnv(gym.Env):
             self._state = state.copy()
 
             # The indices for all empty cells in the lowest row
-            gap_indices = np.argwhere(state[-1, :] == BridgesEnv.StateType.EMPTY)
+            gap_indices = np.argwhere(state[-1, :] != BridgesEnv.StateType.GROUND)
             gap_indices = np.insert(gap_indices, 0, -1)
 
             # Compute the widths of all blocks
@@ -224,8 +224,9 @@ class BridgesEnv(gym.Env):
             # Flipping the state upside down, then looking at the columns at
             # the rightmost ends of each of the blocks
             upside_down_spaces = (
-                state[::-1, indices + widths - 1] == BridgesEnv.StateType.EMPTY
+                state[::-1, indices + widths - 1] != BridgesEnv.StateType.GROUND
             )
+
             # Since the row index in `upside_down_spaces` increases with height,
             # this will return the lowest index at which an empty slot appears
             # at the end of each block, i.e. the height of the block

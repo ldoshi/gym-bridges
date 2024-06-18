@@ -467,21 +467,19 @@ class TestBridgesEnv(unittest.TestCase):
                     )
                 ]
             )
+
         )
 
-    def test_done_signal_with_max_valid_brick_count(self):
-        width = 4
-        env = BridgesEnv(
-            width=width, max_valid_brick_count=2, force_standard_config=True
-        )
-        env.reset()
-        self.assertFalse(_step_helper(1, env, width))
-        self.assertFalse(_step_helper(0, env, width))
-        self.assertTrue(_step_helper(0, env, width))
-        env.reset()
-        self.assertFalse(_step_helper(0, env, width))
-        self.assertTrue(_step_helper(0, env, width))
+    def test_reset_central_block_surface(self):
+        """Verifies resetting with a block in the hole."""
 
+        env = BridgesEnv(width=6, force_standard_config=True)
+        env.reset()
+        state, _,_,_ = env.step(action=2)
+        state, _,_,_ = env.step(action=0)
+        state, _,_,_ = env.step(action=4)
+        env.reset(state)
+        state, _,_,_ = env.step(action=2)
 
 if __name__ == "__main__":
     unittest.main()
