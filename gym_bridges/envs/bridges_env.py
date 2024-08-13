@@ -8,6 +8,7 @@ import random
 import gym_bridges.renderer.renderer_config as renderer_config
 import sys
 import time
+import torch
 import os
 import itertools
 from typing import Union, Optional
@@ -200,17 +201,17 @@ class BridgesEnv(gym.Env):
 
         done = success or over_top
         
-        return self._state.copy(), reward, done, {}
+        return torch.tensor(self._state, dtype=torch.float), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
         self._valid_brick_count = 0
         if state is not None:
             assert state.shape == self.shape
 
-            self._state = state.copy()
+            self._state = state.cpu().numpy().copy()
 
             # The indices for all empty cells in the lowest row
-            gap_indices = np.argwhere(state[-1, :] != BridgesEnv.StateType.GROUND)
+            gap_indices = np.argwhere(self._state[-1, :] != BridgesEnv.StateType.GROUND)
             gap_indices = np.insert(gap_indices, 0, -1)
 
             # Compute the widths of all blocks
@@ -221,10 +222,11 @@ class BridgesEnv(gym.Env):
             # Compute the starting (leftmost) indices for all blocks
             indices = gap_indices[mask] + 1
 
+            
             # Flipping the state upside down, then looking at the columns at
             # the rightmost ends of each of the blocks
             upside_down_spaces = (
-                state[::-1, indices + widths - 1] != BridgesEnv.StateType.GROUND
+                self._state[::-1, indices + widths - 1] != BridgesEnv.StateType.GROUND
             )
 
             # Since the row index in `upside_down_spaces` increases with height,
@@ -296,7 +298,7 @@ class BridgesEnv(gym.Env):
         self._starting_block_surface = sorted(list(self._central_block_surfaces.pop(0)))
         self._ending_block_surface = self._central_block_surfaces.pop()
 
-        return self._state.copy()
+        return torch.tensor(self._state, dtype=torch.float)  
 
     def _draw_state(self) -> None:
         block_size = renderer_config.BLOCK_SIZE * 0.5
