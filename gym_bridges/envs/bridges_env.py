@@ -23,6 +23,7 @@ import pygame
 
 _REWARD_SCALE = 10
 
+
 @dataclasses.dataclass
 class InitialBlock:
     index: int
@@ -188,7 +189,7 @@ class BridgesEnv(gym.Env):
             self._valid_brick_count += 1
 
         success = self._is_bridge_complete()
-        over_top = (i == -1)
+        over_top = i == -1
 
         if i == -1:
             reward = -10 / _REWARD_SCALE
@@ -200,7 +201,7 @@ class BridgesEnv(gym.Env):
             reward = -1 / _REWARD_SCALE
 
         done = success or over_top
-        
+
         return torch.tensor(self._state, dtype=torch.float), reward, done, {}
 
     def reset(self, state=None, gap_count=None):
@@ -222,7 +223,6 @@ class BridgesEnv(gym.Env):
             # Compute the starting (leftmost) indices for all blocks
             indices = gap_indices[mask] + 1
 
-            
             # Flipping the state upside down, then looking at the columns at
             # the rightmost ends of each of the blocks
             upside_down_spaces = (
@@ -279,9 +279,9 @@ class BridgesEnv(gym.Env):
                     initial_block.width,
                     initial_block.height,
                 )
-                self._state[-height:, index : index + width] = (
-                    BridgesEnv.StateType.GROUND
-                )
+                self._state[
+                    -height:, index : index + width
+                ] = BridgesEnv.StateType.GROUND
         self._central_block_surfaces = []
         for initial_block in self._initial_blocks:
             index, width, depth = (
@@ -298,7 +298,7 @@ class BridgesEnv(gym.Env):
         self._starting_block_surface = sorted(list(self._central_block_surfaces.pop(0)))
         self._ending_block_surface = self._central_block_surfaces.pop()
 
-        return torch.tensor(self._state, dtype=torch.float)  
+        return torch.tensor(self._state, dtype=torch.float)
 
     def _draw_state(self) -> None:
         block_size = renderer_config.BLOCK_SIZE * 0.5
