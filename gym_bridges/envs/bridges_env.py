@@ -202,7 +202,7 @@ class BridgesEnv(gym.Env):
 
         done = success or over_top
 
-        return torch.tensor(self._state, dtype=torch.float), reward, done, {}
+        return torch.tensor(self._state, dtype=torch.float), reward, done, {"is_success" : success}
 
     def reset(self, state=None, gap_count=None):
         self._valid_brick_count = 0
