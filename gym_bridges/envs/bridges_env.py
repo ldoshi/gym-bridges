@@ -202,14 +202,16 @@ class BridgesEnv(gym.Env):
 
         done = success or over_top
 
-        return torch.tensor(self._state, dtype=torch.float), reward, done, {"is_success" : success}
+        return torch.tensor(self._state, dtype=torch.float), reward, done, {"is_success": success}
 
-    def reset(self, state=None, gap_count=None):
+    def reset(self, state: torch.Tensor | np.ndarray=None, gap_count=None):
         self._valid_brick_count = 0
         if state is not None:
             assert state.shape == self.shape
 
-            self._state = state.cpu().numpy().copy()
+            if isinstance(state, torch.Tensor):
+                state = state.cpu().numpy()
+            self._state = state.copy()
 
             # The indices for all empty cells in the lowest row
             gap_indices = np.argwhere(self._state[-1, :] != BridgesEnv.StateType.GROUND)
