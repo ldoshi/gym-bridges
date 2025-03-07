@@ -89,11 +89,7 @@ class BridgesEnv(gym.Env):
 
     def _check_row(self, action, index, brick_width):
         section = self._state[index, action : action + brick_width]
-        return not section.any()
-
-    def _off_edge(self, action, index, brick_width):
-        section = self._state[index, action : action + brick_width]
-        return len(section) != brick_width
+        return len(section) == brick_width and not section.any()
 
     def _place_brick(self, action, index, brick_width):
         self._state[index, action : action + brick_width] = BridgesEnv.StateType.BRICK
@@ -182,25 +178,18 @@ class BridgesEnv(gym.Env):
         while (i < self.shape[0] - 1) and self._check_row(action, i + 1, self._brick):
             i += 1
 
-        placed_successfully = i > -1 and i <= self.shape[0] - 1
+        placed_successfully = i > -1 and i < self.shape[0] - 1
 
         if placed_successfully:
             self._place_brick(action, i, self._brick)
             self._valid_brick_count += 1
 
         success = self._is_bridge_complete()
-        over_top = i == -1
-
-        if i == -1:
-            reward = -10 / _REWARD_SCALE
-        elif self._off_edge(action, i, self._brick):
-            reward = -10 / _REWARD_SCALE
-        elif i == (self.shape[0] - 1):
-            reward = -10 / _REWARD_SCALE
-        else:
-            reward = -1 / _REWARD_SCALE
-
-        done = success or over_top
+        done = success  or (
+            self._max_valid_brick_count is not None
+            and self._valid_brick_count == self._max_valid_brick_count
+        )
+        reward = 0 if done else -.1 if placed_successfully else -.2
 
         return torch.tensor(self._state, dtype=torch.float), reward, done, {"is_success": success}
 
